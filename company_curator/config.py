@@ -62,9 +62,9 @@ def load_config(env_path: Path | None = None) -> Config:
     email = EmailConfig(
         smtp_host=os.environ.get("SMTP_HOST", "smtp.gmail.com"),
         smtp_port=int(os.environ.get("SMTP_PORT", "587")),
-        smtp_user=os.environ.get("SMTP_USER", ""),
-        smtp_password=os.environ.get("SMTP_PASSWORD", ""),
-        email_to=os.environ.get("EMAIL_TO", ""),
+        smtp_user=os.environ.get("EMAIL_ADDRESS", ""),
+        smtp_password=os.environ.get("EMAIL_PASSWORD", ""),
+        email_to=os.environ.get("EMAIL_RECIPIENT", ""),
     )
 
     return Config(api=api, email=email)
