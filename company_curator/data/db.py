@@ -8,34 +8,41 @@ DIP: Other modules receive a Database instance rather than creating connections.
 from __future__ import annotations
 
 import sqlite3
+import threading
 from pathlib import Path
 from typing import Any
 
 
 class Database:
-    """Manages SQLite connection and provides query execution."""
+    """Manages SQLite connections with thread-safe access."""
 
     def __init__(self, db_path: Path) -> None:
         self._db_path = db_path
-        self._conn: sqlite3.Connection | None = None
+        self._local = threading.local()
 
     def connect(self) -> None:
-        self._conn = sqlite3.connect(str(self._db_path))
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL")
-        self._conn.execute("PRAGMA foreign_keys=ON")
-        self._initialize_schema()
+        self._get_or_create_connection()
 
     def close(self) -> None:
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        conn = getattr(self._local, "conn", None)
+        if conn:
+            conn.close()
+            self._local.conn = None
 
     @property
     def connection(self) -> sqlite3.Connection:
-        if self._conn is None:
-            self.connect()
-        return self._conn
+        return self._get_or_create_connection()
+
+    def _get_or_create_connection(self) -> sqlite3.Connection:
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = sqlite3.connect(str(self._db_path))
+            conn.row_factory = sqlite3.Row
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA foreign_keys=ON")
+            self._local.conn = conn
+            self._initialize_schema()
+        return conn
 
     def execute(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
         return self.connection.execute(sql, params)
