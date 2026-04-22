@@ -84,6 +84,16 @@ class DailyPipeline:
         print("[Pipeline] Daily pipeline complete.")
         return full_report
 
+    def _format_discovery_section(self, picks: list[ScoredCompany]) -> str:
+        """Format the discovery picks into a report section."""
+        lines = ["## Today's Top Picks\n"]
+        for i, pick in enumerate(picks, 1):
+            lines.append(
+                f"{i}. **{pick.ticker}** — {pick.name} "
+                f"(Score: {pick.score}/100)"
+            )
+        return "\n".join(lines)
+
     def _run_discovery(self) -> list[ScoredCompany]:
         screener = GrowthScreener(self._fetcher)
         scorer = QualitativeScorer(self._client)
@@ -95,9 +105,9 @@ class DailyPipeline:
         return scorer.score_candidates(candidates, top_n=self._config.discovery.daily_picks)
 
     def _run_analysis(self, pick: ScoredCompany) -> str:
-        deep_dive = DeepDiveAnalyzer(self._client)
+        deep_dive = DeepDiveAnalyzer(self._client, self._fetcher)
         peer_comp = PeerComparisonAnalyzer(self._client, self._fetcher)
-        short_report = ShortReportAnalyzer(self._client)
+        short_report = ShortReportAnalyzer(self._client, self._fetcher)
 
         sections = [f"## {pick.ticker} — {pick.name}\n"]
         sections.append(f"**Score:** {pick.score}/100\n**Reasoning:** {pick.reasoning}\n")

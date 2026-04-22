@@ -4,18 +4,31 @@ SRP: This module only defines prompt templates — no execution logic.
 OCP: New prompts can be added without modifying existing ones.
 """
 
+from datetime import datetime
 
-def deep_dive_prompt(ticker: str) -> str:
+
+def _today() -> str:
+    return datetime.now().strftime("%B %d, %Y")
+
+
+def deep_dive_prompt(ticker: str, financial_context: str) -> str:
     return (
-        f"Generate a comprehensive Deep Research Report on {ticker}. "
-        "Cover these 4 areas: "
-        "1. Business Model: How exactly do they make money? Core product in plain English. "
-        "2. Moat and Competition: Top 3 competitors. Does {ticker} have a unique technological "
-        "advantage or patent that competitors lack? "
-        "3. Catalyst: Upcoming product launches, regulatory approvals, or partnerships "
-        "in the next 12 months? "
-        "4. Asymmetry Check: Low valuation floor vs high growth ceiling? Why or why not?"
-    ).format(ticker=ticker)
+        f"Today is {_today()}. You are writing a research report using LIVE market data "
+        f"provided below. Base all financial figures on this data — do not use memorized "
+        f"or outdated numbers.\n\n"
+        f"=== LIVE FINANCIAL DATA FOR {ticker} ===\n"
+        f"{financial_context}\n"
+        f"=== END DATA ===\n\n"
+        f"Write a concise Deep Research Report on {ticker}. Cover these 4 areas:\n"
+        f"1. Business Model — How do they make money? Core product in plain English.\n"
+        f"2. Moat & Competition — Top 3 competitors. Any unique technological "
+        f"advantage or patent that competitors lack?\n"
+        f"3. Catalysts — Upcoming product launches, regulatory shifts, or partnerships "
+        f"in the next 12 months.\n"
+        f"4. Asymmetry — Low valuation floor vs high growth ceiling? Why or why not?\n\n"
+        f"Keep the tone analytical and grounded. Use the live data above for all "
+        f"financial figures. Do not invent numbers."
+    )
 
 
 def peer_comparison_prompt(ticker: str, competitor1: str, competitor2: str) -> str:
@@ -31,21 +44,27 @@ def peer_comparison_prompt(ticker: str, competitor1: str, competitor2: str) -> s
     )
 
 
-def short_report_prompt(ticker: str) -> str:
+def short_report_prompt(ticker: str, financial_context: str) -> str:
     return (
-        f"Act as a skeptic. Write a 3-point risk assessment for {ticker} "
-        "focusing on: accounting irregularities, customer concentration, "
-        "and competitive threats. "
-        "For each point, rate the risk as LOW, MEDIUM, or HIGH and explain why. "
-        "End with an overall risk verdict."
+        f"Today is {_today()}. Use the LIVE market data below — do not rely on "
+        f"memorized or outdated figures.\n\n"
+        f"=== LIVE FINANCIAL DATA FOR {ticker} ===\n"
+        f"{financial_context}\n"
+        f"=== END DATA ===\n\n"
+        f"Act as a skeptic. Write a concise 3-point risk assessment for {ticker} "
+        f"covering:\n"
+        f"1. Accounting irregularities — rate LOW / MEDIUM / HIGH with reasoning.\n"
+        f"2. Customer concentration — rate LOW / MEDIUM / HIGH with reasoning.\n"
+        f"3. Competitive threats — rate LOW / MEDIUM / HIGH with reasoning.\n\n"
+        f"End with an overall risk verdict. Keep it sharp and data-driven."
     )
 
 
 def discovery_scoring_prompt(tickers_with_data: str) -> str:
     return (
-        "You are an investment research analyst focused on finding high-growth companies "
-        "with strong qualitative factors. Analyze the following companies and select the "
-        "top 3 based on:\n\n"
+        f"Today is {_today()}. You are an investment research analyst focused on "
+        "finding high-growth companies with strong qualitative factors. Analyze the "
+        "following companies and select the top 3 based on:\n\n"
         "1. Growth potential (revenue growth, market expansion)\n"
         "2. Company culture and management quality\n"
         "3. Market sentiment and momentum\n"

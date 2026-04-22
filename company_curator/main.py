@@ -60,7 +60,7 @@ def cmd_analyze(args: argparse.Namespace) -> None:
 
     print(f"\nAnalyzing {ticker} ({info.name})...\n")
 
-    deep_dive = DeepDiveAnalyzer(client)
+    deep_dive = DeepDiveAnalyzer(client, fetcher)
     print("## Deep Dive\n")
     print(deep_dive.analyze(ticker))
 
@@ -71,7 +71,7 @@ def cmd_analyze(args: argparse.Namespace) -> None:
             print("\n## Peer Comparison\n")
             print(peer_comp.analyze(ticker, comps[0], comps[1]))
 
-    short = ShortReportAnalyzer(client)
+    short = ShortReportAnalyzer(client, fetcher)
     print("\n## Short Report (Risk Assessment)\n")
     print(short.analyze(ticker))
 
