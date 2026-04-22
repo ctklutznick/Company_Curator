@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.ticker }} — Company Curator{% endblock %}
+{% block content %}
+<div style="display:flex;justify-content:space-between;align-items:flex-start;">
+    <div>
+        <h1>{{ entry.ticker }} — {{ entry.company_name }}</h1>
+        <p class="subtitle">On watchlist since {{ entry.added_date[:10] }}</p>
+    </div>
+    <form method="POST" action="/watchlist/remove/{{ entry.ticker }}"
+          onsubmit="return confirm('Remove {{ entry.ticker }} from watchlist?')">
+        <button type="submit" class="btn btn-danger btn-sm">Remove from Watchlist</button>
+    </form>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-box">
+        <div class="stat-label">Entry Price</div>
+        <div class="stat-value">${{ "%.2f"|format(entry.entry_price) }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Current Price</div>
+        <div class="stat-value">${{ "%.2f"|format(current_price) }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Change</div>
+        <div class="stat-value {{ 'positive' if change_pct >= 0 else 'negative' }}">
+            {{ "%+.1f"|format(change_pct) }}%
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-label">Days Watched</div>
+        <div class="stat-value">
+            {% set days = (entry.added_date[:10] | string) %}
+            {{ entry.added_date[:10] }}
+        </div>
+    </div>
+</div>
+
+{% if entry.notes %}
+<div class="card">
+    <h2>Notes</h2>
+    <p>{{ entry.notes }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Price History</h2>
+    {% if price_history %}
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Open</th>
+                <th>High</th>
+                <th>Low</th>
+                <th>Close</th>
+                <th>Day Change</th>
+                <th>Volume</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in price_history %}
+            <tr>
+                <td>{{ p.date }}</td>
+                <td>{{ "$%.2f"|format(p.open_price) if p.open_price else '—' }}</td>
+                <td>{{ "$%.2f"|format(p.high_price) if p.high_price else '—' }}</td>
+                <td>{{ "$%.2f"|format(p.low_price) if p.low_price else '—' }}</td>
+                <td><strong>{{ "$%.2f"|format(p.close_price) if p.close_price else '—' }}</strong></td>
+                <td>
+                    {% if p.open_price and p.close_price %}
+                        {% set day_chg = ((p.close_price - p.open_price) / p.open_price) * 100 %}
+                        <span class="{{ 'positive' if day_chg >= 0 else 'negative' }}">{{ "%+.2f"|format(day_chg) }}%</span>
+                    {% else %}
+                        —
+                    {% endif %}
+                </td>
+                <td>{{ "{:,}".format(p.volume) if p.volume else '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>No price data recorded yet. Prices are recorded during the daily pipeline run.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Movement Notes</h2>
+    {% if movement_notes %}
+        {% for note in movement_notes %}
+        <div class="note-card">
+            <div class="meta">
+                <span class="badge {{ 'badge-green' if note.change_pct >= 0 else 'badge-red' }}">
+                    {{ "%+.1f"|format(note.change_pct) }}%
+                </span>
+                &nbsp; {{ note.date }} &middot; {{ note.period }}
+            </div>
+            <div class="note-text">{{ note.note }}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <p>No movement notes yet. Notes are generated when stocks move more than 2% in a day.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

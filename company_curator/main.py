@@ -177,6 +177,19 @@ def cmd_status(args: argparse.Namespace) -> None:
     db.close()
 
 
+def cmd_serve(args: argparse.Namespace) -> None:
+    """Start the web interface."""
+    config, db, client, fetcher, notifier = _build_dependencies()
+
+    from company_curator.web.app import create_app
+    app = create_app(config, db, fetcher, client)
+
+    port = args.port or config.web.port
+    host = config.web.host
+    print(f"Starting Company Curator web interface at http://{host}:{port}")
+    app.run(host=host, port=port, debug=args.debug)
+
+
 def cmd_schedule(args: argparse.Namespace) -> None:
     """Set up the daily cron job."""
     import os
@@ -220,6 +233,11 @@ def main() -> None:
     # status
     subparsers.add_parser("status", help="Show watchlist status and alerts")
 
+    # serve
+    serve_parser = subparsers.add_parser("serve", help="Start web interface")
+    serve_parser.add_argument("--port", "-p", type=int, help="Port number")
+    serve_parser.add_argument("--debug", action="store_true", help="Enable debug mode")
+
     # schedule
     subparsers.add_parser("schedule", help="Show cron setup instructions")
 
@@ -229,6 +247,7 @@ def main() -> None:
         "discover": cmd_discover,
         "analyze": cmd_analyze,
         "status": cmd_status,
+        "serve": cmd_serve,
         "schedule": cmd_schedule,
     }
 

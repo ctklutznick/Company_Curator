@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Watchlist — Company Curator{% endblock %}
+{% block content %}
+<h1>Watchlist</h1>
+<p class="subtitle">Tracking growth over time</p>
+
+<div class="card">
+    {% if watchlist %}
+    <table>
+        <thead>
+            <tr>
+                <th>Ticker</th>
+                <th>Company</th>
+                <th>Entry Price</th>
+                <th>Current</th>
+                <th>Change</th>
+                <th>Added</th>
+                <th>Notes</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for stock in watchlist %}
+            <tr>
+                <td><a href="/watchlist/{{ stock.ticker }}" class="ticker">{{ stock.ticker }}</a></td>
+                <td>{{ stock.name }}</td>
+                <td>${{ "%.2f"|format(stock.entry_price) }}</td>
+                <td>${{ "%.2f"|format(stock.current_price) }}</td>
+                <td class="{{ 'positive' if stock.change_pct >= 0 else 'negative' }}">
+                    {{ "%+.1f"|format(stock.change_pct) }}%
+                </td>
+                <td>{{ stock.added_date }}</td>
+                <td style="max-width:200px;font-size:13px;color:var(--gray-500);">{{ stock.notes or '—' }}</td>
+                <td>
+                    <form method="POST" action="/watchlist/remove/{{ stock.ticker }}" style="display:inline;"
+                          onsubmit="return confirm('Remove {{ stock.ticker }} from watchlist?')">
+                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <p>Your watchlist is empty.</p>
+        <p>Click "Add to Watchlist" from your daily email to start tracking stocks.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

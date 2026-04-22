@@ -19,9 +19,11 @@ from company_curator.data.fetcher import BaseDataFetcher
 from company_curator.discovery.scorer import QualitativeScorer, ScoredCompany
 from company_curator.discovery.screener import GrowthScreener
 from company_curator.notifications.emailer import BaseNotifier
+from company_curator.analysis.movement_notes import MovementNotesGenerator
 from company_curator.watchlist.alerts import AlertManager
 from company_curator.watchlist.manager import WatchlistManager
 from company_curator.watchlist.monitor import GrowthMonitor
+from company_curator.watchlist.price_tracker import PriceTracker
 
 
 class DailyPipeline:
@@ -85,12 +87,14 @@ class DailyPipeline:
         return full_report
 
     def _format_discovery_section(self, picks: list[ScoredCompany]) -> str:
-        """Format the discovery picks into a report section."""
+        """Format the discovery picks into a report section with watchlist links."""
+        base_url = self._config.web.base_url
         lines = ["## Today's Top Picks\n"]
         for i, pick in enumerate(picks, 1):
             lines.append(
                 f"{i}. **{pick.ticker}** — {pick.name} "
-                f"(Score: {pick.score}/100)"
+                f"(Score: {pick.score}/100) "
+                f"— [Add to Watchlist]({base_url}/watchlist/add/{pick.ticker})"
             )
         return "\n".join(lines)
 
@@ -168,9 +172,18 @@ class DailyPipeline:
 
         reports = monitor.evaluate_all(entries)
 
-        # Record daily prices
+        # Record daily prices (both legacy and OHLCV)
+        tickers = [e.ticker for e in entries]
         for entry in entries:
             monitor.record_daily_price(entry.ticker)
+
+        tracker = PriceTracker(self._db, self._fetcher)
+        tracker.record_daily_prices(tickers)
+
+        # Generate movement notes for significant movers
+        print("[Pipeline] Generating movement notes...")
+        notes_gen = MovementNotesGenerator(self._client, self._fetcher, self._db)
+        notes_gen.generate_daily_notes(tickers)
 
         # Check for alerts
         new_alerts = alert_mgr.check_and_create_alerts(reports)

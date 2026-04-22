@@ -42,11 +42,20 @@ class WatchlistConfig:
 
 
 @dataclass(frozen=True)
+class WebConfig:
+    host: str = "127.0.0.1"
+    port: int = 5000
+    base_url: str = "http://127.0.0.1:5000"
+    secret_key: str = "company-curator-dev-key"
+
+
+@dataclass(frozen=True)
 class Config:
     api: ApiConfig
     email: EmailConfig
     discovery: DiscoveryConfig = field(default_factory=DiscoveryConfig)
     watchlist: WatchlistConfig = field(default_factory=WatchlistConfig)
+    web: WebConfig = field(default_factory=WebConfig)
     db_path: Path = Path("company_curator.db")
     reports_dir: Path = Path("reports")
 
@@ -67,4 +76,11 @@ def load_config(env_path: Path | None = None) -> Config:
         email_to=os.environ.get("EMAIL_RECIPIENT", ""),
     )
 
-    return Config(api=api, email=email)
+    web = WebConfig(
+        host=os.environ.get("WEB_HOST", "127.0.0.1"),
+        port=int(os.environ.get("WEB_PORT", "5000")),
+        base_url=os.environ.get("WEB_BASE_URL", "http://127.0.0.1:5000"),
+        secret_key=os.environ.get("WEB_SECRET_KEY", "company-curator-dev-key"),
+    )
+
+    return Config(api=api, email=email, web=web)

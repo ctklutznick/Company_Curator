@@ -306,7 +306,13 @@ def _convert_table(lines: list[str], start: int) -> tuple[str, int]:
 
 
 def _inline(text: str) -> str:
-    """Convert inline markdown: bold, italic, inline code."""
+    """Convert inline markdown: links, bold, italic, inline code."""
+    # Links: [text](url)
+    text = re.sub(
+        r"\[(.+?)\]\((.+?)\)",
+        r'<a href="\2" style="color:#2b6cb0;text-decoration:underline;font-weight:500;">\1</a>',
+        text,
+    )
     text = re.sub(r"\*\*\*(.+?)\*\*\*", r"<strong><em>\1</em></strong>", text)
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)

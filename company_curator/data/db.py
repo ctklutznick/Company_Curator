@@ -98,6 +98,29 @@ class Database:
                 acknowledged INTEGER NOT NULL DEFAULT 0,
                 FOREIGN KEY (ticker) REFERENCES watchlist(ticker)
             );
+
+            CREATE TABLE IF NOT EXISTS daily_prices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                date TEXT NOT NULL,
+                open_price REAL,
+                close_price REAL,
+                high_price REAL,
+                low_price REAL,
+                volume INTEGER,
+                UNIQUE(ticker, date)
+            );
+
+            CREATE TABLE IF NOT EXISTS movement_notes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticker TEXT NOT NULL,
+                date TEXT NOT NULL,
+                period TEXT NOT NULL DEFAULT 'daily',
+                price_change_pct REAL,
+                note TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now')),
+                UNIQUE(ticker, date, period)
+            );
         """)
 
     def __enter__(self) -> "Database":

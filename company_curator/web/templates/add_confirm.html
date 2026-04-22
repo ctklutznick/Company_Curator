@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Add {{ ticker }} — Company Curator{% endblock %}
+{% block content %}
+<h1>Add {{ ticker }} to Watchlist</h1>
+<p class="subtitle">Review before confirming</p>
+
+<div class="card">
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-label">Company</div>
+            <div class="stat-value" style="font-size:16px;">{{ info.name }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Current Price</div>
+            <div class="stat-value">${{ "%.2f"|format(info.current_price) }}</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Market Cap</div>
+            <div class="stat-value" style="font-size:16px;">
+                {% if info.market_cap >= 1000000000000 %}
+                    ${{ "%.1f"|format(info.market_cap / 1000000000000) }}T
+                {% elif info.market_cap >= 1000000000 %}
+                    ${{ "%.1f"|format(info.market_cap / 1000000000) }}B
+                {% else %}
+                    ${{ "%.0f"|format(info.market_cap / 1000000) }}M
+                {% endif %}
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Sector</div>
+            <div class="stat-value" style="font-size:14px;">{{ info.sector }}</div>
+        </div>
+    </div>
+
+    {% if metrics %}
+    <div class="stat-grid">
+        <div class="stat-box">
+            <div class="stat-label">P/S Ratio</div>
+            <div class="stat-value">{{ "%.1f"|format(metrics.ps_ratio_ttm) if metrics.ps_ratio_ttm else 'N/A' }}x</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Gross Margin</div>
+            <div class="stat-value">{{ "%.1f"|format(metrics.gross_margin * 100) if metrics.gross_margin else 'N/A' }}%</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">Revenue Growth</div>
+            <div class="stat-value {{ 'positive' if metrics.revenue_growth_yoy and metrics.revenue_growth_yoy > 0 else 'negative' }}">
+                {{ "%+.1f"|format(metrics.revenue_growth_yoy * 100) if metrics.revenue_growth_yoy else 'N/A' }}%
+            </div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-label">EV/EBITDA</div>
+            <div class="stat-value">{{ "%.1f"|format(metrics.ev_ebitda) if metrics.ev_ebitda else 'N/A' }}x</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/watchlist/add/{{ ticker }}">
+        <div style="margin-bottom:16px;">
+            <label for="notes">Notes (optional)</label>
+            <textarea id="notes" name="notes" rows="2" placeholder="Why are you adding this stock?"></textarea>
+        </div>
+        <div style="display:flex;gap:12px;">
+            <button type="submit" class="btn btn-primary">Confirm — Add to Watchlist</button>
+            <a href="/" class="btn" style="color:var(--gray-500);">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

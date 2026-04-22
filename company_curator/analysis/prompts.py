@@ -60,6 +60,21 @@ def short_report_prompt(ticker: str, financial_context: str) -> str:
     )
 
 
+def movement_notes_prompt(
+    ticker: str, period: str, price_data: str, price_change_pct: float
+) -> str:
+    direction = "up" if price_change_pct > 0 else "down"
+    return (
+        f"Today is {_today()}. {ticker} moved {direction} {abs(price_change_pct):.1f}% "
+        f"over the {period} period.\n\n"
+        f"=== PRICE DATA ===\n{price_data}\n=== END DATA ===\n\n"
+        f"In 2-3 sentences, explain the most likely reason for this move. "
+        f"Reference specific catalysts if known (earnings, product launches, "
+        f"sector rotation, macro events, analyst upgrades/downgrades). "
+        f"If the reason is unclear, say so honestly. Be concise and direct."
+    )
+
+
 def discovery_scoring_prompt(tickers_with_data: str) -> str:
     return (
         f"Today is {_today()}. You are an investment research analyst focused on "
