@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ entry.ticker }} — Company Curator{% endblock %}
-{% block page_title %}{{ entry.ticker }} &middot; <span style="font-family:'Kalam',cursive;font-size:18px;color:var(--ink-3);">{{ entry.company_name }}</span>{% endblock %}
+{% block page_title %}{{ entry.ticker }} &middot; <span style="font-family:'Fraunces',serif;font-size:18px;color:var(--ink-3);">{{ entry.company_name }}</span>{% endblock %}
 {% block page_actions %}
 <span class="pill {{ 'pill-green' if change_pct >= 0 else 'pill-red' }}">{{ "%+.1f"|format(change_pct) }}%</span>
 <span class="chip">&#9733; watching</span>
@@ -37,7 +37,7 @@
 {% if entry.notes %}
 <div class="card card-pad card-accent-yellow">
     <div class="section-title">Thesis note</div>
-    <div style="font-family:'Caveat',cursive;font-size:16px;color:var(--ink-2);">"{{ entry.notes }}"</div>
+    <div style="font-family:'Fraunces',serif;font-style:italic;font-size:16px;color:var(--ink-2);">"{{ entry.notes }}"</div>
 </div>
 {% endif %}
 
