@@ -1,75 +1,115 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Company Curator{% endblock %}
+{% block page_title %}Good morning{% endblock %}
+{% block page_actions %}
+<span class="chip chip-solid" style="font-size:10px;">AI &middot; DAILY</span>
+{% endblock %}
+
 {% block content %}
-<h1>Dashboard</h1>
-<p class="subtitle">Your investment research at a glance</p>
+<div class="grid-2col">
+    <!-- Left column -->
+    <div>
+        <!-- AI surfaced candidates -->
+        <div class="card card-pad" style="background:var(--paper-2);">
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <div class="section-title">AI-surfaced candidates</div>
+                <span class="chip" style="margin-left:8px;font-size:10px;">growth before</span>
+                {% if picks %}
+                <span style="margin-left:auto;font-size:11px;color:var(--ink-3);">{{ picks|length }} recent picks</span>
+                {% endif %}
+            </div>
+            {% if picks %}
+            <div class="grid-3col">
+                {% for pick in picks[:6] %}
+                <div class="card-tight" style="padding:10px;background:var(--paper);">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                        <span class="data-val" style="font-size:14px;">{{ pick['ticker'] }}</span>
+                        <span class="pill pill-green" style="font-size:11px;">{{ "%.0f"|format(pick['score']) }}</span>
+                    </div>
+                    <div style="font-size:11px;color:var(--ink-3);">{{ pick['company_name'] }}</div>
+                    <div style="font-size:10px;color:var(--ink-3);font-family:'JetBrains Mono',monospace;margin-top:4px;">{{ pick['date'] }}</div>
+                    <div style="margin-top:8px;">
+                        <a href="/watchlist/add/{{ pick['ticker'] }}" class="btn btn-sm" style="font-size:11px;">+ watchlist</a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <p>No picks yet. Run the discovery pipeline first.</p>
+            </div>
+            {% endif %}
+        </div>
 
-<div class="card">
-    <h2>Watchlist</h2>
-    {% if watchlist %}
-    <table>
-        <thead>
-            <tr>
-                <th>Ticker</th>
-                <th>Company</th>
-                <th>Entry Price</th>
-                <th>Current</th>
-                <th>Change</th>
-                <th>Added</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for stock in watchlist %}
-            <tr>
-                <td><a href="/watchlist/{{ stock.ticker }}" class="ticker">{{ stock.ticker }}</a></td>
-                <td>{{ stock.name }}</td>
-                <td>${{ "%.2f"|format(stock.entry_price) }}</td>
-                <td>${{ "%.2f"|format(stock.current_price) }}</td>
-                <td class="{{ 'positive' if stock.change_pct >= 0 else 'negative' }}">
-                    {{ "%+.1f"|format(stock.change_pct) }}%
-                </td>
-                <td>{{ stock.added_date }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-        <p>No stocks on your watchlist yet.</p>
-        <p>Add stocks from your daily email or use the search above.</p>
+        <!-- Recent reports -->
+        <div class="card card-pad">
+            <div style="display:flex;align-items:center;margin-bottom:8px;">
+                <div class="section-title">Recent reports</div>
+                <span class="chip" style="margin-left:auto;font-size:10px;">library &rarr;</span>
+            </div>
+            {% if picks %}
+                {% for pick in picks[:4] %}
+                <div style="display:flex;align-items:center;gap:8px;padding:7px 0;{% if not loop.last %}border-bottom:1px dashed var(--ink-4);{% endif %}">
+                    <span style="font-size:13px;">&#128196;</span>
+                    <div style="flex:1;font-size:12px;">Deep Dive &middot; {{ pick['ticker'] }}</div>
+                    <div style="font-size:10px;color:var(--ink-4);font-family:'JetBrains Mono',monospace;">{{ pick['date'] }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="padding:12px;color:var(--ink-3);font-size:13px;">No reports yet.</div>
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
-</div>
 
-<div class="card">
-    <h2>Recent Picks</h2>
-    {% if picks %}
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Ticker</th>
-                <th>Company</th>
-                <th>Score</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for pick in picks %}
-            <tr>
-                <td>{{ pick['date'] }}</td>
-                <td><strong>{{ pick['ticker'] }}</strong></td>
-                <td>{{ pick['company_name'] }}</td>
-                <td><span class="badge badge-green">{{ "%.0f"|format(pick['score']) }}/100</span></td>
-                <td><a href="/watchlist/add/{{ pick['ticker'] }}" class="btn btn-primary btn-sm">Add to Watchlist</a></td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <div class="empty-state">
-        <p>No picks yet. Run the discovery pipeline to generate your first report.</p>
+    <!-- Right column -->
+    <div>
+        <!-- Watchlist summary -->
+        <div class="card card-pad">
+            <div style="display:flex;align-items:center;margin-bottom:10px;">
+                <div class="section-title">Watchlist</div>
+                <span style="margin-left:auto;font-size:11px;color:var(--ink-3);">{{ watchlist|length }} tickers</span>
+            </div>
+            {% if watchlist %}
+                {% for stock in watchlist %}
+                <div style="display:flex;align-items:center;gap:10px;padding:7px 0;{% if not loop.last %}border-top:1px dashed var(--ink-4);{% endif %}">
+                    <div class="data-val" style="width:50px;font-size:12px;">
+                        <a href="/watchlist/{{ stock.ticker }}" class="ticker-link">{{ stock.ticker }}</a>
+                    </div>
+                    <div style="flex:1;font-size:12px;color:var(--ink-2);">{{ stock.name }}</div>
+                    <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="font-size:12px;">
+                        {{ "%+.1f"|format(stock.change_pct) }}%
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="padding:12px;color:var(--ink-3);font-size:13px;">
+                    Watchlist is empty. Add stocks from your picks above.
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Sentiment radar placeholder -->
+        <div class="card card-pad">
+            <div class="section-title" style="margin-bottom:8px;">Sentiment radar</div>
+            <div class="section-subtitle" style="margin-bottom:10px;">WATCHLIST &middot; 7D DELTA</div>
+            {% if watchlist %}
+                {% for stock in watchlist[:5] %}
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+                    <div class="mono" style="width:50px;font-size:11px;font-weight:700;">{{ stock.ticker }}</div>
+                    <div style="flex:1;position:relative;height:10px;border:1.3px solid var(--line);border-radius:999px;background:var(--paper-2);overflow:hidden;">
+                        {% set bar_width = [50 + stock.change_pct * 2, 95]|min %}
+                        {% set bar_width = [bar_width, 5]|max %}
+                        <div style="position:absolute;left:0;top:0;bottom:0;width:{{ bar_width }}%;background:{% if stock.change_pct >= 0 %}var(--hl-green){% else %}var(--hl-red){% endif %};"></div>
+                    </div>
+                    <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="width:42px;text-align:right;font-size:11px;">
+                        {{ "%+.1f"|format(stock.change_pct) }}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color:var(--ink-3);font-size:12px;">Add stocks to see sentiment data.</div>
+            {% endif %}
+        </div>
     </div>
-    {% endif %}
 </div>
 {% endblock %}

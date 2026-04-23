@@ -1,51 +1,62 @@
 {% extends "base.html" %}
 {% block title %}Watchlist — Company Curator{% endblock %}
-{% block content %}
-<h1>Watchlist</h1>
-<p class="subtitle">Tracking growth over time</p>
+{% block page_title %}Watchlist{% endblock %}
+{% block page_actions %}
+<span class="chip">growth-before &middot; {{ watchlist|length }} tickers</span>
+{% endblock %}
 
-<div class="card">
-    {% if watchlist %}
+{% block content %}
+{% if watchlist %}
+<div class="card" style="overflow:hidden;">
     <table>
         <thead>
             <tr>
                 <th>Ticker</th>
-                <th>Company</th>
-                <th>Entry Price</th>
+                <th>Name</th>
+                <th>Entry</th>
                 <th>Current</th>
-                <th>Change</th>
+                <th>&Delta; Change</th>
                 <th>Added</th>
-                <th>Notes</th>
+                <th>Latest Note</th>
                 <th></th>
             </tr>
         </thead>
         <tbody>
             {% for stock in watchlist %}
             <tr>
-                <td><a href="/watchlist/{{ stock.ticker }}" class="ticker">{{ stock.ticker }}</a></td>
-                <td>{{ stock.name }}</td>
-                <td>${{ "%.2f"|format(stock.entry_price) }}</td>
-                <td>${{ "%.2f"|format(stock.current_price) }}</td>
-                <td class="{{ 'positive' if stock.change_pct >= 0 else 'negative' }}">
-                    {{ "%+.1f"|format(stock.change_pct) }}%
+                <td>
+                    <a href="/watchlist/{{ stock.ticker }}" class="ticker-link" style="font-size:14px;">{{ stock.ticker }}</a>
                 </td>
-                <td>{{ stock.added_date }}</td>
-                <td style="max-width:200px;font-size:13px;color:var(--gray-500);">{{ stock.notes or '—' }}</td>
+                <td style="color:var(--ink-2);">{{ stock.name }}</td>
+                <td class="mono" style="font-size:12px;">${{ "%.2f"|format(stock.entry_price) }}</td>
+                <td class="mono" style="font-size:12px;">${{ "%.2f"|format(stock.current_price) }}</td>
+                <td>
+                    <span class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="font-size:12px;">
+                        {{ "%+.1f"|format(stock.change_pct) }}%
+                    </span>
+                </td>
+                <td class="mono" style="font-size:11px;color:var(--ink-3);">{{ stock.added_date }}</td>
+                <td style="max-width:200px;font-family:'Caveat',cursive;font-size:14px;color:var(--ink-2);">
+                    {% if stock.notes %}"{{ stock.notes }}"{% else %}&mdash;{% endif %}
+                </td>
                 <td>
                     <form method="POST" action="/watchlist/remove/{{ stock.ticker }}" style="display:inline;"
-                          onsubmit="return confirm('Remove {{ stock.ticker }} from watchlist?')">
-                        <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                          onsubmit="return confirm('Remove {{ stock.ticker }}?')">
+                        <button type="submit" class="btn btn-danger btn-sm">remove</button>
                     </form>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
-    {% else %}
+</div>
+<div class="wf-note" style="margin-top:8px;">&larr; click a ticker to see detail &middot; price history &middot; movement notes</div>
+{% else %}
+<div class="card card-pad">
     <div class="empty-state">
         <p>Your watchlist is empty.</p>
-        <p>Click "Add to Watchlist" from your daily email to start tracking stocks.</p>
+        <p style="font-size:13px;color:var(--ink-4);">Click "Add to Watchlist" from your daily email or dashboard picks to start tracking.</p>
     </div>
-    {% endif %}
 </div>
+{% endif %}
 {% endblock %}
