@@ -44,8 +44,8 @@ class WatchlistConfig:
 @dataclass(frozen=True)
 class WebConfig:
     host: str = "127.0.0.1"
-    port: int = 5000
-    base_url: str = "http://127.0.0.1:5000"
+    port: int = 5050
+    base_url: str = "http://127.0.0.1:5050"
     secret_key: str = "company-curator-dev-key"
 
 
@@ -78,8 +78,8 @@ def load_config(env_path: Path | None = None) -> Config:
 
     web = WebConfig(
         host=os.environ.get("WEB_HOST", "127.0.0.1"),
-        port=int(os.environ.get("WEB_PORT", "5000")),
-        base_url=os.environ.get("WEB_BASE_URL", "http://127.0.0.1:5000"),
+        port=int(os.environ.get("WEB_PORT", "5050")),
+        base_url=os.environ.get("WEB_BASE_URL", "http://127.0.0.1:5050"),
         secret_key=os.environ.get("WEB_SECRET_KEY", "company-curator-dev-key"),
     )
 

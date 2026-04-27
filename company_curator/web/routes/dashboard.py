@@ -5,7 +5,9 @@ SRP: Only handles the dashboard route and view logic.
 
 from __future__ import annotations
 
-from flask import Blueprint, current_app, render_template
+from collections import OrderedDict
+
+from flask import Blueprint, current_app, render_template, request
 
 from company_curator.watchlist.manager import WatchlistManager
 from company_curator.watchlist.price_tracker import PriceTracker
@@ -38,13 +40,29 @@ def index():
             "added_date": entry.added_date[:10],
         })
 
-    # Recent daily picks
-    picks = db.fetchall(
-        "SELECT * FROM daily_picks ORDER BY date DESC LIMIT 9"
+    # Fetch picks grouped by date (last 30 days worth)
+    all_picks = db.fetchall(
+        "SELECT * FROM daily_picks ORDER BY date DESC LIMIT 30"
     )
+
+    # Group by date, preserving order
+    picks_by_date: OrderedDict[str, list] = OrderedDict()
+    for pick in all_picks:
+        date = pick["date"]
+        if date not in picks_by_date:
+            picks_by_date[date] = []
+        picks_by_date[date].append(pick)
+
+    # Which date tab is active? Default to most recent
+    active_date = request.args.get("date")
+    dates = list(picks_by_date.keys())
+    if active_date not in picks_by_date and dates:
+        active_date = dates[0]
 
     return render_template(
         "dashboard.html",
         watchlist=watchlist_data,
-        picks=picks,
+        picks_by_date=picks_by_date,
+        active_date=active_date,
+        dates=dates,
     )

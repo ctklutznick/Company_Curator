@@ -54,7 +54,7 @@ class EmailNotifier(BaseNotifier):
 
     @staticmethod
     def _markdown_to_html(md: str) -> str:
-        """Convert markdown report to styled HTML email."""
+        """Convert markdown report to styled HTML email matching the Quill design."""
         sections = re.split(r"\n---\n", md)
         html_sections: list[str] = []
 
@@ -71,13 +71,14 @@ class EmailNotifier(BaseNotifier):
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
   body {{
     margin: 0;
     padding: 0;
-    background-color: #f4f4f7;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    color: #2d3748;
-    line-height: 1.6;
+    background-color: #f2ede3;
+    font-family: 'Fraunces', Georgia, serif;
+    color: #1a1714;
+    line-height: 1.5;
     font-size: 15px;
   }}
   .wrapper {{
@@ -86,115 +87,224 @@ class EmailNotifier(BaseNotifier):
     padding: 24px 16px;
   }}
   .header {{
-    background: linear-gradient(135deg, #1a365d 0%, #2b6cb0 100%);
-    color: #ffffff;
-    padding: 32px 28px;
-    border-radius: 8px 8px 0 0;
+    background: #1a1714;
+    color: #fbf8f3;
+    padding: 28px 24px;
+    border: 1.5px solid #1a1714;
+    border-radius: 6px 4px 0 0;
+  }}
+  .header-logo {{
+    display: inline-block;
+    width: 28px;
+    height: 28px;
+    border: 1.8px solid #fbf8f3;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 26px;
+    font-size: 14px;
+    background: #f2d35a;
+    color: #1a1714;
+    margin-right: 10px;
+    vertical-align: middle;
   }}
   .header h1 {{
+    display: inline;
     margin: 0;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 22px;
-    font-weight: 600;
-    letter-spacing: -0.3px;
+    font-weight: 700;
+    vertical-align: middle;
   }}
   .header p {{
-    margin: 6px 0 0 0;
-    font-size: 13px;
+    margin: 8px 0 0 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #fbf8f3;
     opacity: 0.85;
   }}
   .body {{
-    background: #ffffff;
-    padding: 28px;
-    border-radius: 0 0 8px 8px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    background: #fbf8f3;
+    padding: 24px;
+    border: 1.5px solid #1a1714;
+    border-top: none;
+    border-radius: 0 0 6px 4px;
   }}
   .section {{
-    margin-bottom: 28px;
-    padding-bottom: 24px;
-    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #9a9089;
   }}
   .section:last-child {{
     border-bottom: none;
     margin-bottom: 0;
     padding-bottom: 0;
   }}
-  h1 {{ font-size: 22px; color: #1a365d; margin: 0 0 16px 0; font-weight: 600; }}
-  h2 {{ font-size: 18px; color: #2b6cb0; margin: 24px 0 12px 0; font-weight: 600; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }}
-  h3 {{ font-size: 15px; color: #4a5568; margin: 20px 0 8px 0; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }}
-  h4 {{ font-size: 14px; color: #4a5568; margin: 16px 0 6px 0; font-weight: 600; }}
-  p {{ margin: 8px 0; }}
-  strong {{ color: #1a202c; }}
+  h1 {{
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 20px;
+    color: #1a1714;
+    margin: 0 0 14px 0;
+    font-weight: 700;
+  }}
+  h2 {{
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 18px;
+    color: #1a1714;
+    margin: 20px 0 10px 0;
+    font-weight: 600;
+    padding-bottom: 6px;
+    border-bottom: 1.5px solid #1a1714;
+  }}
+  h3 {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #6b625a;
+    margin: 18px 0 6px 0;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }}
+  h4 {{
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 15px;
+    color: #3a342e;
+    margin: 14px 0 6px 0;
+    font-weight: 600;
+  }}
+  p {{
+    margin: 6px 0;
+    color: #3a342e;
+  }}
+  strong {{ color: #1a1714; }}
+  em {{ font-style: italic; }}
   ul, ol {{
-    margin: 8px 0;
-    padding-left: 24px;
+    margin: 6px 0;
+    padding-left: 22px;
+    color: #3a342e;
   }}
-  li {{
-    margin: 4px 0;
+  li {{ margin: 3px 0; font-size: 14px; }}
+
+  /* Cards for picks */
+  .pick-card {{
+    background: #f2ede3;
+    border: 1.2px solid #1a1714;
+    border-left: 4px solid #f2d35a;
+    border-radius: 3px 5px 2px 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
   }}
+
+  /* Pills */
+  .pill {{
+    display: inline-block;
+    border: 1.5px solid #1a1714;
+    border-radius: 999px;
+    padding: 1px 10px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 12px;
+    background: #fbf8f3;
+  }}
+  .pill-green {{ background: rgba(74, 124, 58, 0.28); }}
+  .pill-red {{ background: rgba(197, 70, 58, 0.22); }}
+
+  /* Tables */
   table {{
     width: 100%;
     border-collapse: collapse;
-    margin: 16px 0;
+    margin: 14px 0;
     font-size: 13px;
   }}
   th {{
-    background: #edf2f7;
-    color: #2d3748;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #6b625a;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
     font-weight: 600;
     text-align: left;
-    padding: 10px 12px;
-    border: 1px solid #e2e8f0;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.3px;
+    padding: 8px 10px;
+    border-bottom: 1.5px solid #1a1714;
+    background: #f2ede3;
   }}
   td {{
-    padding: 9px 12px;
-    border: 1px solid #e2e8f0;
+    padding: 8px 10px;
+    border-bottom: 1px dashed #9a9089;
     vertical-align: top;
+    font-size: 13px;
   }}
-  tr:nth-child(even) td {{
-    background: #f7fafc;
+  tr:last-child td {{ border-bottom: none; }}
+
+  /* Data styling */
+  .data-val {{
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 700;
   }}
+  .data-label {{
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #6b625a;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }}
+  .positive {{ color: #4a7c3a; }}
+  .negative {{ color: #c5463a; }}
+
+  /* Risk ratings */
+  .risk-high {{ color: #c5463a; font-weight: 600; }}
+  .risk-medium {{ color: #d69e2e; font-weight: 600; }}
+  .risk-low {{ color: #4a7c3a; font-weight: 600; }}
+
+  /* Score badge */
   .score-badge {{
     display: inline-block;
-    background: #2b6cb0;
-    color: #fff;
+    background: #1a1714;
+    color: #fbf8f3;
     padding: 2px 10px;
-    border-radius: 12px;
-    font-size: 13px;
+    border-radius: 999px;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 12px;
     font-weight: 600;
   }}
-  .risk-high {{ color: #c53030; font-weight: 600; }}
-  .risk-medium {{ color: #d69e2e; font-weight: 600; }}
-  .risk-low {{ color: #38a169; font-weight: 600; }}
-  .pick-card {{
-    background: #f7fafc;
-    border-left: 3px solid #2b6cb0;
-    padding: 14px 18px;
-    margin: 12px 0;
-    border-radius: 0 6px 6px 0;
+
+  /* CTA button */
+  .btn {{
+    display: inline-block;
+    border: 1.5px solid #1a1714;
+    border-radius: 4px 7px 3px 6px;
+    padding: 6px 14px;
+    background: #1a1714;
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 13px;
+    color: #fbf8f3;
+    text-decoration: none;
+    font-weight: 600;
   }}
+
   .footer {{
     text-align: center;
-    margin-top: 24px;
-    padding: 16px;
-    font-size: 12px;
-    color: #a0aec0;
+    margin-top: 20px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #9a9089;
+    letter-spacing: 0.5px;
   }}
 </style>
 </head>
 <body>
 <div class="wrapper">
   <div class="header">
-    <h1>Company Curator</h1>
+    <span class="header-logo">&#10022;</span>
+    <h1>Curator</h1>
     <p>Daily Investment Research Report</p>
   </div>
   <div class="body">
     {body_content}
   </div>
   <div class="footer">
-    Generated by Company Curator &middot; Data via Yahoo Finance &middot; Analysis via Claude
+    Company Curator &middot; Data via Yahoo Finance &middot; Analysis via Claude
   </div>
 </div>
 </body>
@@ -210,7 +320,6 @@ def _convert_section(text: str) -> str:
     html_lines: list[str] = []
     i = 0
     in_list = False
-    in_ordered_list = False
     list_type = ""
 
     while i < len(lines):
@@ -310,13 +419,17 @@ def _inline(text: str) -> str:
     # Links: [text](url)
     text = re.sub(
         r"\[(.+?)\]\((.+?)\)",
-        r'<a href="\2" style="color:#2b6cb0;text-decoration:underline;font-weight:500;">\1</a>',
+        r'<a href="\2" style="color:#3a5a8c;text-decoration:underline;font-weight:600;">\1</a>',
         text,
     )
     text = re.sub(r"\*\*\*(.+?)\*\*\*", r"<strong><em>\1</em></strong>", text)
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
-    text = re.sub(r"`(.+?)`", r'<code style="background:#edf2f7;padding:1px 5px;border-radius:3px;font-size:13px;">\1</code>', text)
+    text = re.sub(
+        r"`(.+?)`",
+        r'<code style="font-family:\'JetBrains Mono\',monospace;background:#f2ede3;padding:1px 5px;border-radius:3px;font-size:12px;">\1</code>',
+        text,
+    )
     return text
 
 

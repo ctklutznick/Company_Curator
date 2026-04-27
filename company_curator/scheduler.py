@@ -102,7 +102,16 @@ class DailyPipeline:
         screener = GrowthScreener(self._fetcher)
         scorer = QualitativeScorer(self._client)
 
-        candidates = screener.screen(count=20)
+        # Exclude tickers picked in the last 7 days so each day is fresh
+        recent = self._db.fetchall(
+            "SELECT DISTINCT ticker FROM daily_picks "
+            "WHERE date >= date('now', '-7 days')"
+        )
+        recent_tickers = {r["ticker"] for r in recent}
+
+        candidates = screener.screen(count=30)
+        candidates = [c for c in candidates if c.info.ticker not in recent_tickers]
+
         if not candidates:
             return []
 

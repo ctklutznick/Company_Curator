@@ -57,17 +57,92 @@
 </div>
 {% endif %}
 
-<div class="card card-pad card-accent-yellow">
-    <div class="section-title" style="margin-bottom:12px;">Confirm &mdash; add to watchlist</div>
-    <form method="POST" action="/watchlist/add/{{ ticker }}">
-        <div style="margin-bottom:14px;">
-            <label for="notes">Notes &mdash; why are you watching this?</label>
-            <textarea id="notes" name="notes" rows="2" placeholder="Growth thesis, catalyst, sentiment signal..."></textarea>
+<div class="grid-2col">
+    <!-- Left: Add form -->
+    <div class="card card-pad card-accent-yellow">
+        <div class="section-title" style="margin-bottom:12px;">Confirm &mdash; add to watchlist</div>
+        <form method="POST" action="/watchlist/add/{{ ticker }}">
+            <div style="margin-bottom:14px;">
+                <label for="notes">Notes &mdash; why are you watching this?</label>
+                <textarea id="notes" name="notes" rows="3" placeholder="Growth thesis, catalyst, sentiment signal..."></textarea>
+            </div>
+            <div style="display:flex;gap:10px;">
+                <button type="submit" class="btn btn-primary">&#10003; Add {{ ticker }} to watchlist</button>
+                <a href="/" class="btn">cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Right: AI assistant -->
+    <div class="card card-pad card-accent-blue">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <div class="section-title" style="margin:0;">Ask AI about {{ ticker }}</div>
+            <span class="section-subtitle">RESEARCH ASSISTANT</span>
         </div>
-        <div style="display:flex;gap:10px;">
-            <button type="submit" class="btn btn-primary">&#10003; Add {{ ticker }} to watchlist</button>
-            <a href="/" class="btn">cancel</a>
+        <div id="ai-chat-log" style="min-height:80px;max-height:300px;overflow-y:auto;margin-bottom:12px;">
+            <div style="color:var(--ink-3);font-size:13px;font-style:italic;">
+                Ask anything &mdash; valuation, competitors, risks, catalysts...
+            </div>
         </div>
-    </form>
+        <div style="display:flex;gap:8px;">
+            <input type="text" id="ai-question" placeholder="e.g. What are the main risks?" style="flex:1;"
+                   onkeydown="if(event.key==='Enter')askAI()">
+            <button class="btn btn-primary" onclick="askAI()" id="ai-ask-btn">ask</button>
+        </div>
+    </div>
 </div>
+
+<script>
+function askAI() {
+    const input = document.getElementById('ai-question');
+    const log = document.getElementById('ai-chat-log');
+    const btn = document.getElementById('ai-ask-btn');
+    const question = input.value.trim();
+    if (!question) return;
+
+    // Show user question
+    log.innerHTML += `<div style="margin-bottom:10px;">
+        <div class="data-label" style="margin-bottom:2px;">You</div>
+        <div style="font-size:13px;color:var(--ink);">${question}</div>
+    </div>`;
+    input.value = '';
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    // Show thinking indicator
+    const thinkingId = 'thinking-' + Date.now();
+    log.innerHTML += `<div id="${thinkingId}" style="margin-bottom:10px;">
+        <div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+        <div style="font-size:13px;color:var(--ink-3);font-style:italic;">thinking...</div>
+    </div>`;
+    log.scrollTop = log.scrollHeight;
+
+    fetch('/ai/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ticker: '{{ ticker }}', question: question})
+    })
+    .then(r => r.json())
+    .then(data => {
+        const el = document.getElementById(thinkingId);
+        if (data.answer) {
+            el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+                <div style="font-size:13px;color:var(--ink-2);line-height:1.5;">${data.answer}</div>`;
+        } else {
+            el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+                <div style="font-size:13px;color:var(--accent-red);">Error: ${data.error}</div>`;
+        }
+        log.scrollTop = log.scrollHeight;
+    })
+    .catch(err => {
+        const el = document.getElementById(thinkingId);
+        el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+            <div style="font-size:13px;color:var(--accent-red);">Failed to connect.</div>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'ask';
+    });
+}
+</script>
 {% endblock %}

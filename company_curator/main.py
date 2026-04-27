@@ -191,15 +191,73 @@ def cmd_serve(args: argparse.Namespace) -> None:
 
 
 def cmd_schedule(args: argparse.Namespace) -> None:
-    """Set up the daily cron job."""
+    """Set up a daily launchd job (macOS) to run the discovery pipeline."""
     import os
-    script_path = os.path.abspath(__file__)
-    python_path = sys.executable
-    cron_line = f"0 7 * * 1-5 cd {os.path.dirname(os.path.dirname(script_path))} && {python_path} -m company_curator discover"
+    import plistlib
+    import subprocess
 
-    print("Add this line to your crontab (crontab -e):\n")
-    print(f"  {cron_line}\n")
-    print("This runs the discovery pipeline at 7:00 AM on weekdays.")
+    project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    python_path = sys.executable
+    log_path = os.path.join(project_dir, "curator_cron.log")
+    err_log_path = os.path.join(project_dir, "curator_cron_err.log")
+
+    label = "com.companycurator.daily"
+    plist_path = os.path.expanduser(f"~/Library/LaunchAgents/{label}.plist")
+
+    if args.remove:
+        if os.path.exists(plist_path):
+            subprocess.run(["launchctl", "unload", plist_path], capture_output=True)
+            os.remove(plist_path)
+            print(f"Removed scheduled job: {plist_path}")
+        else:
+            print("No Company Curator schedule found.")
+        return
+
+    # Check if already installed
+    if os.path.exists(plist_path):
+        print(f"Schedule already installed at: {plist_path}")
+        print("Use --remove to uninstall, then re-run to update.")
+        return
+
+    # Build launchd plist — runs at 7:00 AM on weekdays
+    plist = {
+        "Label": label,
+        "ProgramArguments": [
+            python_path, "-m", "company_curator", "discover",
+        ],
+        "WorkingDirectory": project_dir,
+        "StartCalendarInterval": [
+            {"Hour": 7, "Minute": 0, "Weekday": day}
+            for day in range(1, 6)  # Mon=1 through Fri=5
+        ],
+        "StandardOutPath": log_path,
+        "StandardErrorPath": err_log_path,
+        "EnvironmentVariables": {
+            "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
+        },
+    }
+
+    # Load .env values so the pipeline has API keys at runtime
+    env_path = os.path.join(project_dir, ".env")
+    if os.path.exists(env_path):
+        with open(env_path) as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    key, _, value = line.partition("=")
+                    plist["EnvironmentVariables"][key.strip()] = value.strip()
+
+    os.makedirs(os.path.dirname(plist_path), exist_ok=True)
+    with open(plist_path, "wb") as f:
+        plistlib.dump(plist, f)
+
+    subprocess.run(["launchctl", "load", plist_path], check=True)
+
+    print(f"Installed daily schedule: {plist_path}")
+    print("Runs at 7:00 AM Mon-Fri.")
+    print(f"Logs: {log_path}")
+    print(f"Errors: {err_log_path}")
+    print("\nTo remove: python3 -m company_curator schedule --remove")
 
 
 def main() -> None:
@@ -239,7 +297,8 @@ def main() -> None:
     serve_parser.add_argument("--debug", action="store_true", help="Enable debug mode")
 
     # schedule
-    subparsers.add_parser("schedule", help="Show cron setup instructions")
+    schedule_parser = subparsers.add_parser("schedule", help="Install/remove daily cron job")
+    schedule_parser.add_argument("--remove", action="store_true", help="Remove the cron job")
 
     args = parser.parse_args()
 

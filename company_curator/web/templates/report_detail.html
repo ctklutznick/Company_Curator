@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}{{ pick['ticker'] }} Report — Company Curator{% endblock %}
+{% block page_title %}{{ pick['ticker'] }} &middot; <span style="font-family:'Fraunces',serif;font-size:18px;color:var(--ink-3);">{{ pick['company_name'] }}</span>{% endblock %}
+{% block page_actions %}
+<span class="pill pill-yellow" style="font-size:11px;">Score: {{ "%.0f"|format(pick['score']) }}</span>
+<span class="chip" style="font-size:10px;">{{ pick['date'] }}</span>
+<a href="/watchlist/add/{{ pick['ticker'] }}" class="btn btn-sm">+ watchlist</a>
+{% endblock %}
+
+{% block content %}
+<!-- Score & reasoning -->
+<div class="card card-pad card-accent-yellow">
+    <div class="section-title">AI Scoring</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+        <div class="data-val" style="font-size:28px;">{{ "%.0f"|format(pick['score']) }}<span style="font-size:14px;color:var(--ink-3);">/100</span></div>
+    </div>
+    {% if pick['reasoning'] %}
+    <div style="font-size:14px;color:var(--ink-2);font-style:italic;">"{{ pick['reasoning'] }}"</div>
+    {% endif %}
+</div>
+
+<!-- Deep dive analysis -->
+{% if pick['deep_dive'] %}
+<div class="card card-accent-blue" style="overflow:hidden;">
+    <div style="padding:14px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--ink-4);">
+        <div class="section-title" style="margin:0;">Deep Dive Analysis</div>
+        <span class="section-subtitle">AI-GENERATED</span>
+    </div>
+    <div class="report-content" style="padding:16px;">{{ pick['deep_dive'] | md_to_html }}</div>
+</div>
+{% endif %}
+
+<!-- Peer comparison -->
+{% if pick['peer_comparison'] %}
+<div class="card card-accent-green" style="overflow:hidden;">
+    <div style="padding:14px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--ink-4);">
+        <div class="section-title" style="margin:0;">Peer Comparison</div>
+        <span class="section-subtitle">RELATIVE VALUATION</span>
+    </div>
+    <div class="report-content" style="padding:16px;">{{ pick['peer_comparison'] | md_to_html }}</div>
+</div>
+{% endif %}
+
+<!-- Short report -->
+{% if pick['short_report'] %}
+<div class="card card-accent-red" style="overflow:hidden;">
+    <div style="padding:14px 16px;display:flex;align-items:center;gap:8px;border-bottom:1px dashed var(--ink-4);">
+        <div class="section-title" style="margin:0;">Risk Assessment</div>
+        <span class="section-subtitle">SHORT REPORT</span>
+    </div>
+    <div class="report-content" style="padding:16px;">{{ pick['short_report'] | md_to_html }}</div>
+</div>
+{% endif %}
+
+<style>
+    .report-content {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--ink-2);
+    }
+    .report-content p { margin: 6px 0; }
+    .report-content strong { color: var(--ink); }
+    .report-content .rpt-h1 {
+        font-family: 'Fraunces', Georgia, serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--ink);
+        margin: 16px 0 8px;
+        padding-bottom: 6px;
+        border-bottom: 1.5px solid var(--ink);
+    }
+    .report-content .rpt-h2 {
+        font-family: 'Fraunces', Georgia, serif;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--ink);
+        margin: 14px 0 6px;
+        padding-bottom: 4px;
+        border-bottom: 1px dashed var(--ink-4);
+    }
+    .report-content .rpt-h3 {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 10px;
+        color: var(--ink-3);
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin: 14px 0 4px;
+        font-weight: 600;
+    }
+    .report-content .rpt-h4 {
+        font-family: 'Fraunces', Georgia, serif;
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--ink-2);
+        margin: 10px 0 4px;
+    }
+    .report-content ul, .report-content ol {
+        margin: 6px 0;
+        padding-left: 22px;
+    }
+    .report-content li {
+        margin: 3px 0;
+        font-size: 13px;
+    }
+    .report-content table {
+        margin: 12px 0;
+    }
+</style>
+{% endblock %}
