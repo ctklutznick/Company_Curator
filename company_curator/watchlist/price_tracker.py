@@ -7,7 +7,6 @@ DIP: Depends on Database and BaseDataFetcher abstractions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 
 from company_curator.data.db import Database
 from company_curator.data.fetcher import BaseDataFetcher
@@ -27,9 +26,10 @@ class DailyPrice:
 class PriceTracker:
     """Records and retrieves daily OHLCV data for watchlist stocks."""
 
-    def __init__(self, db: Database, fetcher: BaseDataFetcher) -> None:
+    def __init__(self, db: Database, fetcher: BaseDataFetcher, user_id: int) -> None:
         self._db = db
         self._fetcher = fetcher
+        self._user_id = user_id
 
     def record_daily_prices(self, tickers: list[str]) -> list[DailyPrice]:
         """Fetch today's OHLCV data for all tickers and store it."""
@@ -44,10 +44,10 @@ class PriceTracker:
         """Get recorded price history for a ticker, most recent first."""
         rows = self._db.fetchall(
             """SELECT * FROM daily_prices
-               WHERE ticker = ?
+               WHERE user_id = ? AND ticker = ?
                ORDER BY date DESC
                LIMIT ?""",
-            (ticker.upper(), days),
+            (self._user_id, ticker.upper(), days),
         )
         return [self._row_to_price(r) for r in rows]
 
@@ -55,10 +55,10 @@ class PriceTracker:
         """Get the most recent recorded price for a ticker."""
         row = self._db.fetchone(
             """SELECT * FROM daily_prices
-               WHERE ticker = ?
+               WHERE user_id = ? AND ticker = ?
                ORDER BY date DESC
                LIMIT 1""",
-            (ticker.upper(),),
+            (self._user_id, ticker.upper()),
         )
         return self._row_to_price(row) if row else None
 
@@ -72,7 +72,6 @@ class PriceTracker:
             latest = prices[-1]
             today = latest.date.strftime("%Y-%m-%d")
 
-            # yfinance PriceData only has close/volume, get OHLC from raw history
             import yfinance as yf
             hist = yf.Ticker(ticker).history(period="5d")
             if hist.empty:
@@ -91,9 +90,9 @@ class PriceTracker:
 
             self._db.execute(
                 """INSERT OR REPLACE INTO daily_prices
-                   (ticker, date, open_price, close_price, high_price, low_price, volume)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (daily.ticker, daily.date, daily.open_price, daily.close_price,
+                   (user_id, ticker, date, open_price, close_price, high_price, low_price, volume)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (self._user_id, daily.ticker, daily.date, daily.open_price, daily.close_price,
                  daily.high_price, daily.low_price, daily.volume),
             )
             self._db.commit()

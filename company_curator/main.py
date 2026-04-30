@@ -12,9 +12,12 @@ import anthropic
 from company_curator.config import load_config
 from company_curator.data.db import Database
 from company_curator.data.fetcher import YFinanceDataFetcher
+from company_curator.data.models import User
 from company_curator.notifications.emailer import EmailNotifier
 from company_curator.scheduler import DailyPipeline
 from company_curator.watchlist.manager import WatchlistManager
+
+DEFAULT_USER_ID = 1
 
 
 def _build_dependencies():
@@ -25,8 +28,11 @@ def _build_dependencies():
         print("Error: ANTHROPIC_API_KEY not set. Add it to your .env file.")
         sys.exit(1)
 
-    db = Database(config.db_path)
+    db = Database(config.database_url)
     db.connect()
+
+    # Ensure default user exists for CLI usage
+    _ensure_default_user(db)
 
     client = anthropic.Anthropic(api_key=config.api.anthropic_api_key)
     fetcher = YFinanceDataFetcher()
@@ -35,10 +41,28 @@ def _build_dependencies():
     return config, db, client, fetcher, notifier
 
 
+def _ensure_default_user(db: Database) -> None:
+    """Create a default dev user if none exists."""
+    existing = db.session.query(User).filter_by(id=DEFAULT_USER_ID).first()
+    if not existing:
+        from flask_bcrypt import generate_password_hash
+        user = User(
+            email="ctklutznick@gmail.com",
+            password_hash=generate_password_hash("dev").decode("utf-8"),
+            display_name="CK",
+        )
+        db.session.add(user)
+        db.session.commit()
+    elif existing.email == "cli@localhost":
+        existing.email = "ctklutznick@gmail.com"
+        existing.display_name = "CK"
+        db.session.commit()
+
+
 def cmd_discover(args: argparse.Namespace) -> None:
     """Run the daily discovery pipeline."""
     config, db, client, fetcher, notifier = _build_dependencies()
-    pipeline = DailyPipeline(config, db, fetcher, client, notifier)
+    pipeline = DailyPipeline(config, db, fetcher, client, notifier, user_id=DEFAULT_USER_ID)
     report = pipeline.run()
     print("\n" + report)
     db.close()
@@ -81,7 +105,7 @@ def cmd_analyze(args: argparse.Namespace) -> None:
 def cmd_watchlist_add(args: argparse.Namespace) -> None:
     """Add a ticker to the watchlist."""
     config, db, client, fetcher, notifier = _build_dependencies()
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, DEFAULT_USER_ID)
 
     ticker = args.ticker.upper()
     if manager.exists(ticker):
@@ -112,7 +136,7 @@ def cmd_watchlist_add(args: argparse.Namespace) -> None:
 def cmd_watchlist_remove(args: argparse.Namespace) -> None:
     """Remove a ticker from the watchlist."""
     config, db, client, fetcher, notifier = _build_dependencies()
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, DEFAULT_USER_ID)
 
     ticker = args.ticker.upper()
     if manager.remove(ticker):
@@ -125,7 +149,7 @@ def cmd_watchlist_remove(args: argparse.Namespace) -> None:
 def cmd_watchlist_list(args: argparse.Namespace) -> None:
     """List all watchlist entries."""
     config, db, client, fetcher, notifier = _build_dependencies()
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, DEFAULT_USER_ID)
 
     entries = manager.list_active()
     if not entries:
@@ -142,18 +166,18 @@ def cmd_watchlist_list(args: argparse.Namespace) -> None:
 def cmd_status(args: argparse.Namespace) -> None:
     """Show watchlist status and pending alerts."""
     config, db, client, fetcher, notifier = _build_dependencies()
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, DEFAULT_USER_ID)
 
     from company_curator.watchlist.alerts import AlertManager
     from company_curator.watchlist.monitor import GrowthMonitor
 
     monitor = GrowthMonitor(
-        db, fetcher,
+        db, fetcher, DEFAULT_USER_ID,
         price_threshold_pct=config.watchlist.min_price_growth_pct,
         revenue_threshold_pct=config.watchlist.min_revenue_growth_pct,
         monitoring_days=config.watchlist.monitoring_period_days,
     )
-    alert_mgr = AlertManager(db)
+    alert_mgr = AlertManager(db, DEFAULT_USER_ID)
 
     entries = manager.list_active()
     if not entries:

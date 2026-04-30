@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Settings — Company Curator{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px;">
+    <div class="card card-pad" style="margin-bottom: 24px;">
+        <div class="section-title">Profile</div>
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <label for="display_name">Display Name</label>
+            <input type="text" id="display_name" name="display_name" value="{{ user.display_name }}" maxlength="100">
+
+            <div style="margin-top: 12px;">
+                <label>Email</label>
+                <div class="data-val" style="font-size: 14px;">{{ user.email }}</div>
+            </div>
+
+            <div style="margin-top: 24px;">
+                <div class="section-title" style="font-size: 16px;">Email Notifications (SMTP)</div>
+                <p style="font-size: 13px; color: var(--ink-3); margin-bottom: 12px;">
+                    Configure your own SMTP to receive daily reports. Leave blank to use the default.
+                </p>
+
+                <label for="smtp_host">SMTP Host</label>
+                <input type="text" id="smtp_host" name="smtp_host" value="{{ user.smtp_host or '' }}" placeholder="smtp.gmail.com">
+
+                <label for="smtp_port" style="margin-top: 10px;">SMTP Port</label>
+                <input type="text" id="smtp_port" name="smtp_port" value="{{ user.smtp_port or '' }}" placeholder="587">
+
+                <label for="smtp_user" style="margin-top: 10px;">SMTP User</label>
+                <input type="text" id="smtp_user" name="smtp_user" value="{{ user.smtp_user or '' }}" placeholder="you@example.com">
+
+                <label for="smtp_password" style="margin-top: 10px;">SMTP Password</label>
+                <input type="password" id="smtp_password" name="smtp_password" placeholder="{{ 'Encrypted (leave blank to keep)' if user.smtp_password_encrypted else 'Enter SMTP password' }}">
+
+                <label for="email_to" style="margin-top: 10px;">Send Reports To</label>
+                <input type="text" id="email_to" name="email_to" value="{{ user.email_to or '' }}" placeholder="you@example.com">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="margin-top: 20px;">Save Settings</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

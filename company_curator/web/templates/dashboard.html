@@ -6,6 +6,32 @@
 {% endblock %}
 
 {% block content %}
+<!-- Portfolio aggregate -->
+{% if watchlist %}
+<div class="stat-grid" style="margin-bottom:18px;">
+    <div class="stat-box">
+        <div class="data-label">Watchlist Value</div>
+        <div class="data-val" style="font-size:20px;">${{ "%.2f"|format(aggregate.total_current) }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="data-label">Total Cost Basis</div>
+        <div class="data-val" style="font-size:20px;">${{ "%.2f"|format(aggregate.total_entry) }}</div>
+    </div>
+    <div class="stat-box">
+        <div class="data-label">P&L ($)</div>
+        <div class="data-val {{ 'positive' if aggregate.total_change_dollar >= 0 else 'negative' }}" style="font-size:20px;">
+            {{ "%+.2f"|format(aggregate.total_change_dollar) }}
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="data-label">P&L (%)</div>
+        <div class="data-val {{ 'positive' if aggregate.total_change_pct >= 0 else 'negative' }}" style="font-size:20px;">
+            {{ "%+.1f"|format(aggregate.total_change_pct) }}%
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="grid-2col">
     <!-- Left column -->
     <div>
@@ -85,7 +111,7 @@
 
     <!-- Right column -->
     <div>
-        <!-- Watchlist summary -->
+        <!-- Watchlist with individual details -->
         <div class="card card-pad">
             <div style="display:flex;align-items:center;margin-bottom:10px;">
                 <div class="section-title">Watchlist</div>
@@ -93,13 +119,49 @@
             </div>
             {% if watchlist %}
                 {% for stock in watchlist %}
-                <div style="display:flex;align-items:center;gap:10px;padding:7px 0;{% if not loop.last %}border-top:1px dashed var(--ink-4);{% endif %}">
-                    <div class="data-val" style="width:50px;font-size:12px;">
-                        <a href="/watchlist/{{ stock.ticker }}" class="ticker-link">{{ stock.ticker }}</a>
+                <div style="padding:8px 0;{% if not loop.last %}border-bottom:1px dashed var(--ink-4);{% endif %}">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div style="width:50px;">
+                            <a href="/watchlist/{{ stock.ticker }}" class="ticker-link" style="font-size:13px;">{{ stock.ticker }}</a>
+                        </div>
+                        <div style="flex:1;font-size:12px;color:var(--ink-2);">{{ stock.name }}</div>
+                        <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="font-size:13px;font-weight:700;">
+                            {{ "%+.1f"|format(stock.change_pct) }}%
+                        </div>
                     </div>
-                    <div style="flex:1;font-size:12px;color:var(--ink-2);">{{ stock.name }}</div>
-                    <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="font-size:12px;">
-                        {{ "%+.1f"|format(stock.change_pct) }}%
+                    <div style="display:flex;gap:12px;margin-top:4px;padding-left:60px;flex-wrap:wrap;">
+                        <div style="font-size:11px;">
+                            <span class="data-label" style="font-size:9px;">Entry</span>
+                            <span class="mono" style="font-size:11px;">${{ "%.2f"|format(stock.entry_price) }}</span>
+                        </div>
+                        <div style="font-size:11px;">
+                            <span class="data-label" style="font-size:9px;">Now</span>
+                            <span class="mono" style="font-size:11px;">${{ "%.2f"|format(stock.current_price) }}</span>
+                        </div>
+                        <div style="font-size:11px;">
+                            <span class="data-label" style="font-size:9px;">P&L</span>
+                            <span class="mono {{ 'positive' if stock.change_dollar >= 0 else 'negative' }}" style="font-size:11px;">
+                                {{ "%+.2f"|format(stock.change_dollar) }}
+                            </span>
+                        </div>
+                        <div style="font-size:11px;border-left:1px solid var(--ink-4);padding-left:10px;">
+                            <span class="data-label" style="font-size:9px;">1M</span>
+                            {% if stock.chg_1mo is not none %}
+                            <span class="mono {{ 'positive' if stock.chg_1mo >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_1mo) }}%</span>
+                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
+                        </div>
+                        <div style="font-size:11px;">
+                            <span class="data-label" style="font-size:9px;">6M</span>
+                            {% if stock.chg_6mo is not none %}
+                            <span class="mono {{ 'positive' if stock.chg_6mo >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_6mo) }}%</span>
+                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
+                        </div>
+                        <div style="font-size:11px;">
+                            <span class="data-label" style="font-size:9px;">1Y</span>
+                            {% if stock.chg_1yr is not none %}
+                            <span class="mono {{ 'positive' if stock.chg_1yr >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_1yr) }}%</span>
+                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
+                        </div>
                     </div>
                 </div>
                 {% endfor %}
@@ -110,10 +172,28 @@
             {% endif %}
         </div>
 
+        <!-- AI Research Assistant -->
+        <div class="card card-pad card-accent-blue">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                <div class="section-title" style="margin:0;">Curator AI</div>
+                <span class="section-subtitle">RESEARCH ASSISTANT</span>
+            </div>
+            <div id="ai-chat-log" style="min-height:80px;max-height:350px;overflow-y:auto;margin-bottom:12px;">
+                <div style="color:var(--ink-3);font-size:13px;font-style:italic;">
+                    Ask any investment question &mdash; stocks, sectors, strategies, macro...
+                </div>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="ai-question" placeholder="e.g. What sectors look strong right now?" style="flex:1;"
+                       maxlength="2000" onkeydown="if(event.key==='Enter')askAI()">
+                <button class="btn btn-primary" onclick="askAI()" id="ai-ask-btn">ask</button>
+            </div>
+        </div>
+
         <!-- Sentiment radar -->
         <div class="card card-pad">
             <div class="section-title" style="margin-bottom:8px;">Sentiment radar</div>
-            <div class="section-subtitle" style="margin-bottom:10px;">WATCHLIST &middot; 7D DELTA</div>
+            <div class="section-subtitle" style="margin-bottom:10px;">WATCHLIST &middot; SINCE ENTRY</div>
             {% if watchlist %}
                 {% for stock in watchlist[:5] %}
                 <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
@@ -134,6 +214,58 @@
         </div>
     </div>
 </div>
+
+<script>
+function askAI() {
+    const input = document.getElementById('ai-question');
+    const log = document.getElementById('ai-chat-log');
+    const btn = document.getElementById('ai-ask-btn');
+    const question = input.value.trim();
+    if (!question) return;
+
+    log.innerHTML += `<div style="margin-bottom:10px;">
+        <div class="data-label" style="margin-bottom:2px;">You</div>
+        <div style="font-size:13px;color:var(--ink);">${question}</div>
+    </div>`;
+    input.value = '';
+    btn.disabled = true;
+    btn.textContent = '...';
+
+    const thinkingId = 'thinking-' + Date.now();
+    log.innerHTML += `<div id="${thinkingId}" style="margin-bottom:10px;">
+        <div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+        <div style="font-size:13px;color:var(--ink-3);font-style:italic;">thinking...</div>
+    </div>`;
+    log.scrollTop = log.scrollHeight;
+
+    fetch('/ai/ask', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ticker: '', question: question})
+    })
+    .then(r => r.json())
+    .then(data => {
+        const el = document.getElementById(thinkingId);
+        if (data.answer) {
+            el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+                <div style="font-size:13px;color:var(--ink-2);line-height:1.5;white-space:pre-wrap;">${data.answer}</div>`;
+        } else {
+            el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+                <div style="font-size:13px;color:var(--accent-red);">Error: ${data.error}</div>`;
+        }
+        log.scrollTop = log.scrollHeight;
+    })
+    .catch(err => {
+        const el = document.getElementById(thinkingId);
+        el.innerHTML = `<div class="data-label" style="margin-bottom:2px;">Curator AI</div>
+            <div style="font-size:13px;color:var(--accent-red);">Failed to connect.</div>`;
+    })
+    .finally(() => {
+        btn.disabled = false;
+        btn.textContent = 'ask';
+    });
+}
+</script>
 
 <style>
     .date-tabs {

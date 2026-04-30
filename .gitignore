@@ -21,5 +21,14 @@ venv/
 # Reports (generated)
 reports/
 
+# Logs
+*.log
+
+# Docker
+pgdata/
+
+# Alembic
+migrations/versions/__pycache__/
+
 # OS
 .DS_Store

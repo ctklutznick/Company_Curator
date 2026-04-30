@@ -6,6 +6,7 @@
 <span class="chip">&#9733; watching</span>
 <form method="POST" action="/watchlist/remove/{{ entry.ticker }}" style="display:inline;"
       onsubmit="return confirm('Remove {{ entry.ticker }}?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <button type="submit" class="btn btn-danger btn-sm">remove</button>
 </form>
 {% endblock %}

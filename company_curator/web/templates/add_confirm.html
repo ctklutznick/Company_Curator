@@ -62,6 +62,7 @@
     <div class="card card-pad card-accent-yellow">
         <div class="section-title" style="margin-bottom:12px;">Confirm &mdash; add to watchlist</div>
         <form method="POST" action="/watchlist/add/{{ ticker }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:14px;">
                 <label for="notes">Notes &mdash; why are you watching this?</label>
                 <textarea id="notes" name="notes" rows="3" placeholder="Growth thesis, catalyst, sentiment signal..."></textarea>
@@ -85,8 +86,8 @@
             </div>
         </div>
         <div style="display:flex;gap:8px;">
-            <input type="text" id="ai-question" placeholder="e.g. What are the main risks?" style="flex:1;"
-                   onkeydown="if(event.key==='Enter')askAI()">
+            <input type="text" id="ai-question" placeholder="e.g. What are the main risks? Compare to competitors?" style="flex:1;"
+                   maxlength="2000" onkeydown="if(event.key==='Enter')askAI()">
             <button class="btn btn-primary" onclick="askAI()" id="ai-ask-btn">ask</button>
         </div>
     </div>

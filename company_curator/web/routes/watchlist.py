@@ -6,7 +6,10 @@ DIP: Delegates to WatchlistManager, PriceTracker, MovementNotesGenerator.
 
 from __future__ import annotations
 
-from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
+import re
+
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask_login import current_user, login_required
 
 from company_curator.analysis.movement_notes import MovementNotesGenerator
 from company_curator.watchlist.manager import WatchlistManager
@@ -15,26 +18,49 @@ from company_curator.watchlist.price_tracker import PriceTracker
 watchlist_bp = Blueprint("watchlist", __name__)
 
 
+@watchlist_bp.route("/search", methods=["POST"])
+@login_required
+def search():
+    """Search for a ticker — redirects to detail if on watchlist, otherwise to add page."""
+    query = request.form.get("q", "").strip().upper()
+    if not query or not re.match(r"^[A-Z0-9]{1,10}$", query):
+        flash("Enter a valid ticker symbol (e.g. AAPL).", "error")
+        return redirect(request.referrer or url_for("dashboard.index"))
+
+    db = current_app.config["APP_DB"]
+    manager = WatchlistManager(db, current_user.id)
+
+    if manager.exists(query):
+        return redirect(url_for("watchlist.detail", ticker=query))
+
+    return redirect(url_for("watchlist.add_confirm", ticker=query))
+
+
 @watchlist_bp.route("/")
+@login_required
 def list_all():
     db = current_app.config["APP_DB"]
     fetcher = current_app.config["APP_FETCHER"]
+    user_id = current_user.id
 
-    manager = WatchlistManager(db)
-    tracker = PriceTracker(db, fetcher)
+    manager = WatchlistManager(db, user_id)
+    tracker = PriceTracker(db, fetcher, user_id)
     entries = manager.list_active()
 
     watchlist_data: list[dict] = []
     for entry in entries:
-        latest = tracker.get_latest(entry.ticker)
-        current_price = latest.close_price if latest else entry.entry_price
-        change_pct = ((current_price - entry.entry_price) / entry.entry_price) * 100
+        live_price = fetcher.get_current_price(entry.ticker)
+        if live_price is None:
+            latest = tracker.get_latest(entry.ticker)
+            live_price = latest.close_price if latest else entry.entry_price
+
+        change_pct = ((live_price - entry.entry_price) / entry.entry_price) * 100
 
         watchlist_data.append({
             "ticker": entry.ticker,
             "name": entry.company_name,
             "entry_price": entry.entry_price,
-            "current_price": current_price,
+            "current_price": live_price,
             "change_pct": change_pct,
             "added_date": entry.added_date[:10],
             "notes": entry.notes,
@@ -44,13 +70,19 @@ def list_all():
 
 
 @watchlist_bp.route("/add/<ticker>")
+@login_required
 def add_confirm(ticker: str):
     """Show confirmation page before adding to watchlist (safe from link prefetchers)."""
     ticker = ticker.upper()
+    if not re.match(r"^[A-Z0-9]{1,10}$", ticker):
+        flash("Invalid ticker symbol.", "error")
+        return redirect(url_for("dashboard.index"))
+
     db = current_app.config["APP_DB"]
     fetcher = current_app.config["APP_FETCHER"]
+    user_id = current_user.id
 
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, user_id)
     if manager.exists(ticker):
         flash(f"{ticker} is already on your watchlist.", "info")
         return redirect(url_for("watchlist.list_all"))
@@ -71,13 +103,19 @@ def add_confirm(ticker: str):
 
 
 @watchlist_bp.route("/add/<ticker>", methods=["POST"])
+@login_required
 def add_stock(ticker: str):
     """Actually add the stock to the watchlist."""
     ticker = ticker.upper()
+    if not re.match(r"^[A-Z0-9]{1,10}$", ticker):
+        flash("Invalid ticker symbol.", "error")
+        return redirect(url_for("dashboard.index"))
+
     db = current_app.config["APP_DB"]
     fetcher = current_app.config["APP_FETCHER"]
+    user_id = current_user.id
 
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, user_id)
     if manager.exists(ticker):
         flash(f"{ticker} is already on your watchlist.", "info")
         return redirect(url_for("watchlist.list_all"))
@@ -88,7 +126,7 @@ def add_stock(ticker: str):
         return redirect(url_for("dashboard.index"))
 
     metrics = fetcher.get_financial_metrics(ticker)
-    notes = request.form.get("notes", "").strip() or None
+    notes = request.form.get("notes", "").strip()[:1000] or None
 
     manager.add(
         ticker=ticker,
@@ -99,7 +137,7 @@ def add_stock(ticker: str):
     )
 
     # Record initial price
-    tracker = PriceTracker(db, fetcher)
+    tracker = PriceTracker(db, fetcher, user_id)
     tracker.record_daily_prices([ticker])
 
     flash(f"Added {ticker} ({info.name}) to your watchlist at ${info.current_price:.2f}.", "success")
@@ -107,23 +145,29 @@ def add_stock(ticker: str):
 
 
 @watchlist_bp.route("/<ticker>")
+@login_required
 def detail(ticker: str):
     """Stock detail page with price history and movement notes."""
     ticker = ticker.upper()
+    if not re.match(r"^[A-Z0-9]{1,10}$", ticker):
+        flash("Invalid ticker symbol.", "error")
+        return redirect(url_for("watchlist.list_all"))
+
     db = current_app.config["APP_DB"]
     fetcher = current_app.config["APP_FETCHER"]
     client = current_app.config["APP_CLIENT"]
+    user_id = current_user.id
 
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, user_id)
     entry = manager.get(ticker)
     if not entry:
         flash(f"{ticker} is not on your watchlist.", "error")
         return redirect(url_for("watchlist.list_all"))
 
-    tracker = PriceTracker(db, fetcher)
+    tracker = PriceTracker(db, fetcher, user_id)
     price_history = tracker.get_history(ticker, days=90)
 
-    notes_gen = MovementNotesGenerator(client, fetcher, db)
+    notes_gen = MovementNotesGenerator(client, fetcher, db, user_id)
     movement_notes = notes_gen.get_notes(ticker, limit=30)
 
     # Current price from fetcher for real-time
@@ -141,12 +185,14 @@ def detail(ticker: str):
 
 
 @watchlist_bp.route("/remove/<ticker>", methods=["POST"])
+@login_required
 def remove_stock(ticker: str):
     """Remove a stock from the watchlist."""
     ticker = ticker.upper()
     db = current_app.config["APP_DB"]
+    user_id = current_user.id
 
-    manager = WatchlistManager(db)
+    manager = WatchlistManager(db, user_id)
     if manager.remove(ticker):
         flash(f"Removed {ticker} from your watchlist.", "success")
     else:

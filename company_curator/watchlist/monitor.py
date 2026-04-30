@@ -7,7 +7,7 @@ DIP: Depends on Database and BaseDataFetcher abstractions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
 
 from company_curator.data.db import Database
 from company_curator.data.fetcher import BaseDataFetcher
@@ -37,12 +37,14 @@ class GrowthMonitor:
         self,
         db: Database,
         fetcher: BaseDataFetcher,
+        user_id: int,
         price_threshold_pct: float = 15.0,
         revenue_threshold_pct: float = 10.0,
         monitoring_days: int = 90,
     ) -> None:
         self._db = db
         self._fetcher = fetcher
+        self._user_id = user_id
         self._price_threshold = price_threshold_pct
         self._revenue_threshold = revenue_threshold_pct
         self._monitoring_days = monitoring_days
@@ -93,8 +95,8 @@ class GrowthMonitor:
 
         today = datetime.now().strftime("%Y-%m-%d")
         self._db.execute(
-            """INSERT OR IGNORE INTO price_history (ticker, date, close_price)
-               VALUES (?, ?, ?)""",
-            (ticker, today, current_price),
+            """INSERT OR IGNORE INTO price_history (user_id, ticker, date, close_price)
+               VALUES (?, ?, ?, ?)""",
+            (self._user_id, ticker, today, current_price),
         )
         self._db.commit()

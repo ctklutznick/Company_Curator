@@ -43,7 +43,7 @@ class WatchlistConfig:
 
 @dataclass(frozen=True)
 class WebConfig:
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 5050
     base_url: str = "http://127.0.0.1:5050"
     secret_key: str = "company-curator-dev-key"
@@ -56,8 +56,9 @@ class Config:
     discovery: DiscoveryConfig = field(default_factory=DiscoveryConfig)
     watchlist: WatchlistConfig = field(default_factory=WatchlistConfig)
     web: WebConfig = field(default_factory=WebConfig)
-    db_path: Path = Path("company_curator.db")
+    database_url: str = "sqlite:///company_curator.db"
     reports_dir: Path = Path("reports")
+    fernet_key: str = ""
 
 
 def load_config(env_path: Path | None = None) -> Config:
@@ -77,10 +78,16 @@ def load_config(env_path: Path | None = None) -> Config:
     )
 
     web = WebConfig(
-        host=os.environ.get("WEB_HOST", "127.0.0.1"),
+        host=os.environ.get("WEB_HOST", "0.0.0.0"),
         port=int(os.environ.get("WEB_PORT", "5050")),
         base_url=os.environ.get("WEB_BASE_URL", "http://127.0.0.1:5050"),
         secret_key=os.environ.get("WEB_SECRET_KEY", "company-curator-dev-key"),
     )
 
-    return Config(api=api, email=email, web=web)
+    return Config(
+        api=api,
+        email=email,
+        web=web,
+        database_url=os.environ.get("DATABASE_URL", "sqlite:///company_curator.db"),
+        fernet_key=os.environ.get("FERNET_KEY", ""),
+    )

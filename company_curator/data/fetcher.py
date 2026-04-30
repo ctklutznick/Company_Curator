@@ -44,6 +44,14 @@ class PriceData:
     volume: int
 
 
+@dataclass
+class NewsItem:
+    title: str
+    summary: str
+    source: str
+    published: str
+
+
 class BaseDataFetcher(ABC):
     """Abstract base for data fetching — allows swapping data sources (OCP/DIP)."""
 
@@ -61,6 +69,10 @@ class BaseDataFetcher(ABC):
 
     @abstractmethod
     def get_current_price(self, ticker: str) -> float | None:
+        ...
+
+    @abstractmethod
+    def get_news(self, ticker: str, count: int = 5) -> list[NewsItem]:
         ...
 
 
@@ -122,6 +134,30 @@ class YFinanceDataFetcher(BaseDataFetcher):
             return info.get("currentPrice", info.get("regularMarketPrice"))
         except Exception:
             return None
+
+    def get_news(self, ticker: str, count: int = 5) -> list[NewsItem]:
+        try:
+            stock = yf.Ticker(ticker)
+            raw_news = stock.news or []
+            items: list[NewsItem] = []
+            for item in raw_news[:count]:
+                content = item.get("content", {})
+                title = content.get("title", "")
+                if not title:
+                    continue
+                summary = content.get("summary", "")
+                provider = content.get("provider", {})
+                source = provider.get("displayName", "Unknown")
+                published = content.get("pubDate", "")
+                items.append(NewsItem(
+                    title=title,
+                    summary=summary[:300] if summary else "",
+                    source=source,
+                    published=published,
+                ))
+            return items
+        except Exception:
+            return []
 
     def get_top_gainers(self, count: int = 50) -> list[str]:
         """Get tickers with strong recent momentum for screening."""

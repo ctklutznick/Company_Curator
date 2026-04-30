@@ -1,134 +1,102 @@
-"""SQLite database layer for Company Curator.
+"""SQLAlchemy database layer for Company Curator.
 
-SRP: Handles only database connection and schema management.
-OCP: New tables can be added via migrations without modifying existing code.
+SRP: Handles only database connection and session management.
+OCP: New tables can be added via models without modifying existing code.
 DIP: Other modules receive a Database instance rather than creating connections.
 """
 
 from __future__ import annotations
 
-import sqlite3
-import threading
-from pathlib import Path
 from typing import Any
+
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session, scoped_session, sessionmaker
+
+from company_curator.data.models import Base
 
 
 class Database:
-    """Manages SQLite connections with thread-safe access."""
+    """Manages SQLAlchemy engine and scoped sessions."""
 
-    def __init__(self, db_path: Path) -> None:
-        self._db_path = db_path
-        self._local = threading.local()
+    def __init__(self, database_url: str) -> None:
+        self._database_url = database_url
+        connect_args: dict[str, Any] = {}
+        if database_url.startswith("sqlite"):
+            connect_args["check_same_thread"] = False
 
-    def connect(self) -> None:
-        self._get_or_create_connection()
+        self._engine: Engine = create_engine(
+            database_url,
+            connect_args=connect_args,
+            pool_pre_ping=True,
+        )
+        self._session_factory = sessionmaker(bind=self._engine)
+        self._scoped_session = scoped_session(self._session_factory)
 
-    def close(self) -> None:
-        conn = getattr(self._local, "conn", None)
-        if conn:
-            conn.close()
-            self._local.conn = None
+    def create_tables(self) -> None:
+        """Create all tables from ORM models."""
+        Base.metadata.create_all(self._engine)
 
     @property
-    def connection(self) -> sqlite3.Connection:
-        return self._get_or_create_connection()
+    def session(self) -> Session:
+        """Return the current thread-local session."""
+        return self._scoped_session()
 
-    def _get_or_create_connection(self) -> sqlite3.Connection:
-        conn = getattr(self._local, "conn", None)
-        if conn is None:
-            conn = sqlite3.connect(str(self._db_path))
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA foreign_keys=ON")
-            self._local.conn = conn
-            self._initialize_schema()
-        return conn
+    def connect(self) -> None:
+        """Initialize — create tables if they don't exist."""
+        self.create_tables()
 
-    def execute(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Cursor:
-        return self.connection.execute(sql, params)
+    def close(self) -> None:
+        """Remove the current scoped session."""
+        self._scoped_session.remove()
 
-    def executemany(self, sql: str, params_list: list[tuple[Any, ...]]) -> sqlite3.Cursor:
-        return self.connection.executemany(sql, params_list)
+    @property
+    def engine(self) -> Engine:
+        return self._engine
 
-    def fetchone(self, sql: str, params: tuple[Any, ...] = ()) -> sqlite3.Row | None:
-        return self.execute(sql, params).fetchone()
+    # --- Compatibility layer (raw SQL) ---
+    # These methods allow gradual migration from raw SQL to ORM queries.
+    # Routes and managers can use either the ORM (db.session) or raw SQL (db.execute).
 
-    def fetchall(self, sql: str, params: tuple[Any, ...] = ()) -> list[sqlite3.Row]:
-        return self.execute(sql, params).fetchall()
+    def execute(self, sql: str, params: tuple[Any, ...] = ()) -> Any:
+        """Execute raw SQL. Use '?' placeholders (auto-converted to ':paramN' for SA)."""
+        sa_sql, sa_params = self._convert_params(sql, params)
+        result = self.session.execute(text(sa_sql), sa_params)
+        self.session.flush()
+        return result
+
+    def fetchone(self, sql: str, params: tuple[Any, ...] = ()) -> Any:
+        sa_sql, sa_params = self._convert_params(sql, params)
+        result = self.session.execute(text(sa_sql), sa_params)
+        row = result.mappings().first()
+        return row
+
+    def fetchall(self, sql: str, params: tuple[Any, ...] = ()) -> list[Any]:
+        sa_sql, sa_params = self._convert_params(sql, params)
+        result = self.session.execute(text(sa_sql), sa_params)
+        return list(result.mappings().all())
 
     def commit(self) -> None:
-        self.connection.commit()
+        self.session.commit()
 
-    def _initialize_schema(self) -> None:
-        self.connection.executescript("""
-            CREATE TABLE IF NOT EXISTS watchlist (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticker TEXT NOT NULL UNIQUE,
-                company_name TEXT NOT NULL,
-                added_date TEXT NOT NULL,
-                entry_price REAL NOT NULL,
-                entry_revenue REAL,
-                status TEXT NOT NULL DEFAULT 'active',
-                notes TEXT,
-                created_at TEXT NOT NULL DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS price_history (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticker TEXT NOT NULL,
-                date TEXT NOT NULL,
-                close_price REAL NOT NULL,
-                volume INTEGER,
-                UNIQUE(ticker, date),
-                FOREIGN KEY (ticker) REFERENCES watchlist(ticker)
-            );
-
-            CREATE TABLE IF NOT EXISTS daily_picks (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                ticker TEXT NOT NULL,
-                company_name TEXT NOT NULL,
-                score REAL,
-                reasoning TEXT,
-                deep_dive TEXT,
-                peer_comparison TEXT,
-                short_report TEXT,
-                UNIQUE(date, ticker)
-            );
-
-            CREATE TABLE IF NOT EXISTS alerts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticker TEXT NOT NULL,
-                alert_type TEXT NOT NULL,
-                message TEXT NOT NULL,
-                triggered_date TEXT NOT NULL,
-                acknowledged INTEGER NOT NULL DEFAULT 0,
-                FOREIGN KEY (ticker) REFERENCES watchlist(ticker)
-            );
-
-            CREATE TABLE IF NOT EXISTS daily_prices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticker TEXT NOT NULL,
-                date TEXT NOT NULL,
-                open_price REAL,
-                close_price REAL,
-                high_price REAL,
-                low_price REAL,
-                volume INTEGER,
-                UNIQUE(ticker, date)
-            );
-
-            CREATE TABLE IF NOT EXISTS movement_notes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ticker TEXT NOT NULL,
-                date TEXT NOT NULL,
-                period TEXT NOT NULL DEFAULT 'daily',
-                price_change_pct REAL,
-                note TEXT NOT NULL,
-                created_at TEXT NOT NULL DEFAULT (datetime('now')),
-                UNIQUE(ticker, date, period)
-            );
-        """)
+    @staticmethod
+    def _convert_params(sql: str, params: tuple[Any, ...]) -> tuple[str, dict[str, Any]]:
+        """Convert '?' placeholder SQL to ':paramN' named parameters for SQLAlchemy."""
+        sa_params: dict[str, Any] = {}
+        idx = 0
+        converted = []
+        i = 0
+        while i < len(sql):
+            if sql[i] == "?" and (i == 0 or sql[i - 1] != "'"):
+                param_name = f"p{idx}"
+                converted.append(f":{param_name}")
+                if idx < len(params):
+                    sa_params[param_name] = params[idx]
+                idx += 1
+            else:
+                converted.append(sql[i])
+            i += 1
+        return "".join(converted), sa_params
 
     def __enter__(self) -> "Database":
         self.connect()

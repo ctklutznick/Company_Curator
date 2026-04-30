@@ -1,0 +1,41 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5050:5050"
+    environment:
+      - DATABASE_URL=postgresql://curator:curator@db:5432/company_curator
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - WEB_SECRET_KEY=${WEB_SECRET_KEY:-change-me-in-production}
+      - FERNET_KEY=${FERNET_KEY}
+      - WEB_HOST=0.0.0.0
+      - WEB_PORT=5050
+      - WEB_BASE_URL=${WEB_BASE_URL:-http://localhost:5050}
+      - RUN_SCHEDULER=${RUN_SCHEDULER:-0}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - EMAIL_ADDRESS=${EMAIL_ADDRESS:-}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-}
+      - EMAIL_RECIPIENT=${EMAIL_RECIPIENT:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=curator
+      - POSTGRES_PASSWORD=curator
+      - POSTGRES_DB=company_curator
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U curator"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

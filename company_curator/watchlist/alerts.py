@@ -26,8 +26,9 @@ class Alert:
 class AlertManager:
     """Creates and manages investment alerts."""
 
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, user_id: int) -> None:
         self._db = db
+        self._user_id = user_id
 
     def check_and_create_alerts(self, reports: list[GrowthReport]) -> list[Alert]:
         """Check growth reports and create alerts for investment-ready companies."""
@@ -44,15 +45,16 @@ class AlertManager:
     def get_unacknowledged(self) -> list[Alert]:
         """Get all unacknowledged alerts."""
         rows = self._db.fetchall(
-            "SELECT * FROM alerts WHERE acknowledged = 0 ORDER BY triggered_date DESC"
+            "SELECT * FROM alerts WHERE user_id = ? AND acknowledged = 0 ORDER BY triggered_date DESC",
+            (self._user_id,),
         )
         return [self._row_to_alert(row) for row in rows]
 
     def acknowledge(self, alert_id: int) -> None:
         """Mark an alert as acknowledged."""
         self._db.execute(
-            "UPDATE alerts SET acknowledged = 1 WHERE id = ?",
-            (alert_id,),
+            "UPDATE alerts SET acknowledged = 1 WHERE id = ? AND user_id = ?",
+            (alert_id, self._user_id),
         )
         self._db.commit()
 
@@ -60,8 +62,8 @@ class AlertManager:
         """Create an investment alert if one doesn't already exist."""
         existing = self._db.fetchone(
             """SELECT 1 FROM alerts
-               WHERE ticker = ? AND alert_type = 'investment_ready' AND acknowledged = 0""",
-            (report.ticker,),
+               WHERE user_id = ? AND ticker = ? AND alert_type = 'investment_ready' AND acknowledged = 0""",
+            (self._user_id, report.ticker),
         )
         if existing:
             return None
@@ -77,15 +79,15 @@ class AlertManager:
             message += f"Revenue growth: {report.revenue_change_pct:+.1f}%"
 
         self._db.execute(
-            """INSERT INTO alerts (ticker, alert_type, message, triggered_date)
-               VALUES (?, ?, ?, ?)""",
-            (report.ticker, "investment_ready", message, now),
+            """INSERT INTO alerts (user_id, ticker, alert_type, message, triggered_date)
+               VALUES (?, ?, ?, ?, ?)""",
+            (self._user_id, report.ticker, "investment_ready", message, now),
         )
         self._db.commit()
 
         row = self._db.fetchone(
-            "SELECT * FROM alerts WHERE ticker = ? ORDER BY id DESC LIMIT 1",
-            (report.ticker,),
+            "SELECT * FROM alerts WHERE user_id = ? AND ticker = ? ORDER BY id DESC LIMIT 1",
+            (self._user_id, report.ticker),
         )
         return self._row_to_alert(row) if row else None
 

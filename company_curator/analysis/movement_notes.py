@@ -11,7 +11,6 @@ import anthropic
 from company_curator.analysis.prompts import movement_notes_prompt
 from company_curator.data.db import Database
 from company_curator.data.fetcher import BaseDataFetcher
-from company_curator.watchlist.price_tracker import DailyPrice
 
 
 class MovementNotesGenerator:
@@ -22,12 +21,14 @@ class MovementNotesGenerator:
         client: anthropic.Anthropic,
         fetcher: BaseDataFetcher,
         db: Database,
+        user_id: int,
         model: str = "claude-sonnet-4-20250514",
         threshold_pct: float = 2.0,
     ) -> None:
         self._client = client
         self._fetcher = fetcher
         self._db = db
+        self._user_id = user_id
         self._model = model
         self._threshold = threshold_pct
 
@@ -106,10 +107,10 @@ class MovementNotesGenerator:
         rows = self._db.fetchall(
             """SELECT date, period, price_change_pct, note
                FROM movement_notes
-               WHERE ticker = ?
+               WHERE user_id = ? AND ticker = ?
                ORDER BY date DESC, period
                LIMIT ?""",
-            (ticker.upper(), limit),
+            (self._user_id, ticker.upper(), limit),
         )
         return [
             {
@@ -124,7 +125,19 @@ class MovementNotesGenerator:
     def _generate_note(
         self, ticker: str, period: str, price_data: str, change_pct: float
     ) -> str:
-        prompt = movement_notes_prompt(ticker, period, price_data, change_pct)
+        # Fetch real news headlines for context
+        news_items = self._fetcher.get_news(ticker, count=5)
+        news_headlines = ""
+        if news_items:
+            lines = []
+            for item in news_items:
+                line = f"- {item.title} ({item.source})"
+                if item.summary:
+                    line += f"\n  {item.summary[:200]}"
+                lines.append(line)
+            news_headlines = "\n".join(lines)
+
+        prompt = movement_notes_prompt(ticker, period, price_data, change_pct, news_headlines)
         response = self._client.messages.create(
             model=self._model,
             max_tokens=300,
@@ -137,9 +150,9 @@ class MovementNotesGenerator:
     ) -> None:
         self._db.execute(
             """INSERT OR REPLACE INTO movement_notes
-               (ticker, date, period, price_change_pct, note)
-               VALUES (?, ?, ?, ?, ?)""",
-            (ticker.upper(), date, period, change_pct, note),
+               (user_id, ticker, date, period, price_change_pct, note)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (self._user_id, ticker.upper(), date, period, change_pct, note),
         )
         self._db.commit()
 

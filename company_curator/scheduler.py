@@ -11,6 +11,7 @@ from datetime import datetime
 import anthropic
 
 from company_curator.analysis.deep_dive import DeepDiveAnalyzer
+from company_curator.analysis.movement_notes import MovementNotesGenerator
 from company_curator.analysis.peer_comparison import PeerComparisonAnalyzer
 from company_curator.analysis.short_report import ShortReportAnalyzer
 from company_curator.config import Config
@@ -19,7 +20,6 @@ from company_curator.data.fetcher import BaseDataFetcher
 from company_curator.discovery.scorer import QualitativeScorer, ScoredCompany
 from company_curator.discovery.screener import GrowthScreener
 from company_curator.notifications.emailer import BaseNotifier
-from company_curator.analysis.movement_notes import MovementNotesGenerator
 from company_curator.watchlist.alerts import AlertManager
 from company_curator.watchlist.manager import WatchlistManager
 from company_curator.watchlist.monitor import GrowthMonitor
@@ -36,12 +36,14 @@ class DailyPipeline:
         fetcher: BaseDataFetcher,
         client: anthropic.Anthropic,
         notifier: BaseNotifier,
+        user_id: int,
     ) -> None:
         self._config = config
         self._db = db
         self._fetcher = fetcher
         self._client = client
         self._notifier = notifier
+        self._user_id = user_id
 
     def run(self) -> str:
         """Run the complete daily pipeline. Returns the full report."""
@@ -105,7 +107,8 @@ class DailyPipeline:
         # Exclude tickers picked in the last 7 days so each day is fresh
         recent = self._db.fetchall(
             "SELECT DISTINCT ticker FROM daily_picks "
-            "WHERE date >= date('now', '-7 days')"
+            "WHERE user_id = ? AND date >= date('now', '-7 days')",
+            (self._user_id,),
         )
         recent_tickers = {r["ticker"] for r in recent}
 
@@ -130,7 +133,6 @@ class DailyPipeline:
 
         # Auto-detect competitors from the deep dive context
         sections.append("\n### Peer Comparison\n")
-        info = self._fetcher.get_company_info(pick.ticker)
         competitors = self._find_competitors(pick.ticker)
         if len(competitors) >= 2:
             sections.append(peer_comp.analyze(pick.ticker, competitors[0], competitors[1]))
@@ -143,37 +145,51 @@ class DailyPipeline:
         return "\n".join(sections)
 
     def _find_competitors(self, ticker: str) -> list[str]:
-        """Find 2 competitors for peer comparison using sector matching."""
+        """Find 2 direct competitors using Claude to identify real industry peers."""
         info = self._fetcher.get_company_info(ticker)
         if not info:
             return []
 
-        # Simple competitor finding: same sector stocks from our universe
-        from company_curator.data.fetcher import YFinanceDataFetcher
-        universe = YFinanceDataFetcher._get_screening_universe().split()
-        competitors: list[str] = []
+        prompt = (
+            f"Name exactly 2 publicly traded direct competitors to {ticker} ({info.name}, "
+            f"sector: {info.sector}, industry: {info.industry}). "
+            f"These must be companies that compete in the same core business — "
+            f"similar products/services, similar customers, similar scale. "
+            f"Do NOT pick unrelated companies that just happen to be in the same sector. "
+            f"Reply with ONLY the two ticker symbols separated by a space, nothing else. "
+            f"Example: MSFT GOOG"
+        )
 
-        for t in universe:
-            if t == ticker:
-                continue
-            comp_info = self._fetcher.get_company_info(t)
-            if comp_info and comp_info.sector == info.sector:
-                competitors.append(t)
-            if len(competitors) >= 2:
-                break
-
-        return competitors
+        try:
+            response = self._client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=20,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            tickers = response.content[0].text.strip().split()
+            # Validate they're real tickers with data
+            valid = []
+            for t in tickers:
+                t = t.upper().strip(",.")
+                if t != ticker and self._fetcher.get_company_info(t):
+                    valid.append(t)
+                if len(valid) >= 2:
+                    break
+            return valid
+        except Exception:
+            return []
 
     def _run_watchlist_monitoring(self) -> tuple[str, str]:
-        manager = WatchlistManager(self._db)
+        manager = WatchlistManager(self._db, self._user_id)
         monitor = GrowthMonitor(
             self._db,
             self._fetcher,
+            self._user_id,
             price_threshold_pct=self._config.watchlist.min_price_growth_pct,
             revenue_threshold_pct=self._config.watchlist.min_revenue_growth_pct,
             monitoring_days=self._config.watchlist.monitoring_period_days,
         )
-        alert_mgr = AlertManager(self._db)
+        alert_mgr = AlertManager(self._db, self._user_id)
 
         entries = manager.list_active()
         if not entries:
@@ -186,12 +202,12 @@ class DailyPipeline:
         for entry in entries:
             monitor.record_daily_price(entry.ticker)
 
-        tracker = PriceTracker(self._db, self._fetcher)
+        tracker = PriceTracker(self._db, self._fetcher, self._user_id)
         tracker.record_daily_prices(tickers)
 
         # Generate movement notes for significant movers
         print("[Pipeline] Generating movement notes...")
-        notes_gen = MovementNotesGenerator(self._client, self._fetcher, self._db)
+        notes_gen = MovementNotesGenerator(self._client, self._fetcher, self._db, self._user_id)
         notes_gen.generate_daily_notes(tickers)
 
         # Check for alerts
@@ -219,9 +235,9 @@ class DailyPipeline:
 
     def _save_daily_pick(self, date: str, pick: ScoredCompany, analysis: str) -> None:
         self._db.execute(
-            """INSERT OR REPLACE INTO daily_picks (date, ticker, company_name, score, reasoning, deep_dive)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (date, pick.ticker, pick.name, pick.score, pick.reasoning, analysis),
+            """INSERT OR REPLACE INTO daily_picks (user_id, date, ticker, company_name, score, reasoning, deep_dive)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (self._user_id, date, pick.ticker, pick.name, pick.score, pick.reasoning, analysis),
         )
         self._db.commit()
 

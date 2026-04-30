@@ -27,8 +27,9 @@ class WatchlistEntry:
 class WatchlistManager:
     """Manages the investment watchlist."""
 
-    def __init__(self, db: Database) -> None:
+    def __init__(self, db: Database, user_id: int) -> None:
         self._db = db
+        self._user_id = user_id
 
     def add(
         self,
@@ -41,20 +42,23 @@ class WatchlistManager:
         """Add a company to the watchlist."""
         now = datetime.now().isoformat()
         self._db.execute(
-            """INSERT INTO watchlist (ticker, company_name, added_date, entry_price, entry_revenue, notes)
-               VALUES (?, ?, ?, ?, ?, ?)""",
-            (ticker.upper(), company_name, now, entry_price, entry_revenue, notes),
+            """INSERT INTO watchlist (user_id, ticker, company_name, added_date, entry_price, entry_revenue, notes)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (self._user_id, ticker.upper(), company_name, now, entry_price, entry_revenue, notes),
         )
         self._db.commit()
 
-        row = self._db.fetchone("SELECT * FROM watchlist WHERE ticker = ?", (ticker.upper(),))
+        row = self._db.fetchone(
+            "SELECT * FROM watchlist WHERE user_id = ? AND ticker = ?",
+            (self._user_id, ticker.upper()),
+        )
         return self._row_to_entry(row)
 
     def remove(self, ticker: str) -> bool:
         """Remove a company from the watchlist."""
         cursor = self._db.execute(
-            "UPDATE watchlist SET status = 'removed' WHERE ticker = ? AND status = 'active'",
-            (ticker.upper(),),
+            "UPDATE watchlist SET status = 'removed' WHERE user_id = ? AND ticker = ? AND status = 'active'",
+            (self._user_id, ticker.upper()),
         )
         self._db.commit()
         return cursor.rowcount > 0
@@ -62,23 +66,24 @@ class WatchlistManager:
     def list_active(self) -> list[WatchlistEntry]:
         """List all active watchlist entries."""
         rows = self._db.fetchall(
-            "SELECT * FROM watchlist WHERE status = 'active' ORDER BY added_date DESC"
+            "SELECT * FROM watchlist WHERE user_id = ? AND status = 'active' ORDER BY added_date DESC",
+            (self._user_id,),
         )
         return [self._row_to_entry(row) for row in rows]
 
     def get(self, ticker: str) -> WatchlistEntry | None:
         """Get a specific watchlist entry."""
         row = self._db.fetchone(
-            "SELECT * FROM watchlist WHERE ticker = ? AND status = 'active'",
-            (ticker.upper(),),
+            "SELECT * FROM watchlist WHERE user_id = ? AND ticker = ? AND status = 'active'",
+            (self._user_id, ticker.upper()),
         )
         return self._row_to_entry(row) if row else None
 
     def exists(self, ticker: str) -> bool:
         """Check if a ticker is already on the watchlist."""
         row = self._db.fetchone(
-            "SELECT 1 FROM watchlist WHERE ticker = ? AND status = 'active'",
-            (ticker.upper(),),
+            "SELECT 1 FROM watchlist WHERE user_id = ? AND ticker = ? AND status = 'active'",
+            (self._user_id, ticker.upper()),
         )
         return row is not None
 

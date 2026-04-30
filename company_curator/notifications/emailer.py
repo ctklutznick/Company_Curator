@@ -53,6 +53,25 @@ class EmailNotifier(BaseNotifier):
             return False
 
     @staticmethod
+    def build_from_user(user, fernet_key: str, fallback: EmailConfig) -> "EmailNotifier":
+        """Build an EmailNotifier from a User's stored SMTP settings, or fall back to global."""
+        if user.smtp_host and user.smtp_user and user.smtp_password_encrypted and fernet_key:
+            from company_curator.utils.crypto import decrypt
+            try:
+                password = decrypt(user.smtp_password_encrypted, fernet_key)
+            except Exception:
+                return EmailNotifier(fallback)
+            config = EmailConfig(
+                smtp_host=user.smtp_host,
+                smtp_port=user.smtp_port or 587,
+                smtp_user=user.smtp_user,
+                smtp_password=password,
+                email_to=user.email_to or user.email,
+            )
+            return EmailNotifier(config)
+        return EmailNotifier(fallback)
+
+    @staticmethod
     def _markdown_to_html(md: str) -> str:
         """Convert markdown report to styled HTML email matching the Quill design."""
         sections = re.split(r"\n---\n", md)
@@ -185,8 +204,6 @@ class EmailNotifier(BaseNotifier):
     color: #3a342e;
   }}
   li {{ margin: 3px 0; font-size: 14px; }}
-
-  /* Cards for picks */
   .pick-card {{
     background: #f2ede3;
     border: 1.2px solid #1a1714;
@@ -195,8 +212,6 @@ class EmailNotifier(BaseNotifier):
     padding: 12px 16px;
     margin: 10px 0;
   }}
-
-  /* Pills */
   .pill {{
     display: inline-block;
     border: 1.5px solid #1a1714;
@@ -208,8 +223,6 @@ class EmailNotifier(BaseNotifier):
   }}
   .pill-green {{ background: rgba(74, 124, 58, 0.28); }}
   .pill-red {{ background: rgba(197, 70, 58, 0.22); }}
-
-  /* Tables */
   table {{
     width: 100%;
     border-collapse: collapse;
@@ -235,8 +248,6 @@ class EmailNotifier(BaseNotifier):
     font-size: 13px;
   }}
   tr:last-child td {{ border-bottom: none; }}
-
-  /* Data styling */
   .data-val {{
     font-family: 'JetBrains Mono', monospace;
     font-weight: 700;
@@ -250,13 +261,9 @@ class EmailNotifier(BaseNotifier):
   }}
   .positive {{ color: #4a7c3a; }}
   .negative {{ color: #c5463a; }}
-
-  /* Risk ratings */
   .risk-high {{ color: #c5463a; font-weight: 600; }}
   .risk-medium {{ color: #d69e2e; font-weight: 600; }}
   .risk-low {{ color: #4a7c3a; font-weight: 600; }}
-
-  /* Score badge */
   .score-badge {{
     display: inline-block;
     background: #1a1714;
@@ -267,8 +274,6 @@ class EmailNotifier(BaseNotifier):
     font-size: 12px;
     font-weight: 600;
   }}
-
-  /* CTA button */
   .btn {{
     display: inline-block;
     border: 1.5px solid #1a1714;
@@ -281,7 +286,6 @@ class EmailNotifier(BaseNotifier):
     text-decoration: none;
     font-weight: 600;
   }}
-
   .footer {{
     text-align: center;
     margin-top: 20px;

@@ -408,10 +408,13 @@
                 <div class="sidebar-logo-sub">research</div>
             </div>
         </a>
-        <div class="sidebar-search">
-            <span>Ticker, company...</span>
-            <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;">&#8984;K</span>
-        </div>
+        <form action="/watchlist/search" method="POST" class="sidebar-search" style="cursor:text;" id="search-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="q" id="search-input" placeholder="Ticker, e.g. AAPL"
+                   maxlength="10" autocomplete="off"
+                   style="border:none;background:transparent;font-family:'Fraunces',Georgia,serif;font-size:12px;color:var(--ink);width:100%;outline:none;padding:0;">
+            <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--ink-4);white-space:nowrap;">&#8984;K</span>
+        </form>
         <div class="nav-items">
             <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
                 <span>&#8962;</span> Dashboard
@@ -421,6 +424,21 @@
             </a>
         </div>
         {% block sidebar_extra %}{% endblock %}
+
+        {% if current_user.is_authenticated %}
+        <div class="sidebar-watching" style="border-top: 1px dashed var(--ink-4); padding-top: 12px;">
+            <div class="sidebar-watching-title">ACCOUNT</div>
+            <a href="/auth/settings" class="nav-item {% if '/auth/settings' in request.path %}active{% endif %}">
+                <span>&#9881;</span> Settings
+            </a>
+            <a href="/auth/logout" class="nav-item">
+                <span>&#8617;</span> Log Out
+            </a>
+            <div style="font-size: 11px; color: var(--ink-4); padding: 4px 10px;">
+                {{ current_user.display_name }}
+            </div>
+        </div>
+        {% endif %}
     </div>
 
     <!-- Main -->
@@ -440,5 +458,20 @@
             {% block content %}{% endblock %}
         </div>
     </div>
+<script>
+document.addEventListener('keydown', function(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        var input = document.getElementById('search-input');
+        if (input) { input.focus(); input.select(); }
+    }
+});
+var searchInput = document.getElementById('search-input');
+if (searchInput) {
+    searchInput.addEventListener('input', function() {
+        this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    });
+}
+</script>
 </body>
 </html>
