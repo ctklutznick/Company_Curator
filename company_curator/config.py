@@ -39,6 +39,7 @@ class EmailConfig:
     smtp_user: str
     smtp_password: str
     email_to: str
+    from_name: str = "Company Curator"
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ def load_config(env_path: Path | None = None) -> Config:
         smtp_user=os.environ.get("EMAIL_ADDRESS", ""),
         smtp_password=os.environ.get("EMAIL_PASSWORD", ""),
         email_to=os.environ.get("EMAIL_RECIPIENT", ""),
+        from_name=os.environ.get("EMAIL_FROM_NAME", "Company Curator"),
     )
 
     explicit_base_url = os.environ.get("WEB_BASE_URL")

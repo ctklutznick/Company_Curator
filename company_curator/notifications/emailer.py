@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 from dataclasses import replace
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.utils import formataddr
 
 from company_curator.config import EmailConfig
 
@@ -52,7 +53,7 @@ class EmailNotifier(BaseNotifier):
 
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = self._config.smtp_user
+        msg["From"] = formataddr((self._config.from_name, self._config.smtp_user))
         msg["To"] = self._config.email_to
 
         msg.attach(MIMEText(body, "plain"))
