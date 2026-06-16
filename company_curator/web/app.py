@@ -195,12 +195,16 @@ def create_app(
     from company_curator.web.routes.ai_chat import ai_chat_bp
     from company_curator.web.routes.auth import auth_bp
     from company_curator.web.routes.dashboard import dashboard_bp
+    from company_curator.web.routes.preferences import preferences_bp
     from company_curator.web.routes.reports import reports_bp
+    from company_curator.web.routes.audit import audit_bp
     from company_curator.web.routes.watchlist import watchlist_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(ai_chat_bp, url_prefix="/ai")
+    app.register_blueprint(audit_bp, url_prefix="/audit")
     app.register_blueprint(dashboard_bp)
+    app.register_blueprint(preferences_bp, url_prefix="/preferences")
     app.register_blueprint(reports_bp, url_prefix="/report")
     app.register_blueprint(watchlist_bp, url_prefix="/watchlist")
 

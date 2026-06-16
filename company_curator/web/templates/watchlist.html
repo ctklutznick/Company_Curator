@@ -37,7 +37,10 @@
                 </td>
                 <td class="mono" style="font-size:11px;color:var(--ink-3);">{{ stock.added_date }}</td>
                 <td style="max-width:200px;font-family:'Fraunces',serif;font-style:italic;font-size:14px;color:var(--ink-2);">
-                    {% if stock.notes %}"{{ stock.notes }}"{% else %}&mdash;{% endif %}
+                    {% if stock.notes %}
+                        {% set words = stock.notes.split() %}
+                        "{{ words[:10]|join(' ') }}{% if words|length > 10 %}…{% endif %}"
+                    {% else %}&mdash;{% endif %}
                 </td>
                 <td>
                     <form method="POST" action="/watchlist/remove/{{ stock.ticker }}" style="display:inline;"

@@ -7,7 +7,7 @@
 
 {% block content %}
 <!-- Price strip -->
-<div class="card card-pad" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;">
+<div class="card card-pad grid-6col">
     <div>
         <div class="data-label">Price</div>
         <div class="data-val" style="font-size:22px;">${{ "%.2f"|format(info.current_price) }}</div>
@@ -29,16 +29,34 @@
         <div style="font-size:14px;font-weight:600;">{{ info.sector }}</div>
     </div>
     <div>
-        <div class="data-label">Industry</div>
-        <div style="font-size:13px;color:var(--ink-2);">{{ info.industry }}</div>
+        <div class="data-label">1M</div>
+        {% if period_changes.get('1mo') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['1mo'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['1mo']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">&mdash;</div>{% endif %}
+    </div>
+    <div>
+        <div class="data-label">6M</div>
+        {% if period_changes.get('6mo') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['6mo'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['6mo']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">&mdash;</div>{% endif %}
+    </div>
+    <div>
+        <div class="data-label">YTD</div>
+        {% if period_changes.get('ytd') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['ytd'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['ytd']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">&mdash;</div>{% endif %}
     </div>
 </div>
 
 {% if metrics %}
-<div class="card card-pad" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;">
+<div class="card card-pad grid-5col">
     <div>
         <div class="data-label">P/S (TTM)</div>
         <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.ps_ratio_ttm) if metrics.ps_ratio_ttm else 'N/A' }}x</div>
+    </div>
+    <div>
+        <div class="data-label">EV/EBITDA</div>
+        <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.ev_ebitda) if metrics.ev_ebitda else 'N/A' }}x</div>
     </div>
     <div>
         <div class="data-label">Gross Margin</div>
@@ -51,8 +69,16 @@
         </div>
     </div>
     <div>
-        <div class="data-label">EV/EBITDA</div>
-        <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.ev_ebitda) if metrics.ev_ebitda else 'N/A' }}x</div>
+        <div class="data-label">Revenue (TTM)</div>
+        <div class="data-val" style="font-size:18px;">
+            {% if metrics.revenue_ttm %}
+                {% if metrics.revenue_ttm >= 1000000000 %}
+                    ${{ "%.1f"|format(metrics.revenue_ttm / 1000000000) }}B
+                {% else %}
+                    ${{ "%.0f"|format(metrics.revenue_ttm / 1000000) }}M
+                {% endif %}
+            {% else %}N/A{% endif %}
+        </div>
     </div>
 </div>
 {% endif %}

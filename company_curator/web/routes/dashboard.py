@@ -44,16 +44,6 @@ def index():
         total_entry_value += entry.entry_price
         total_current_value += live_price
 
-        # Compute period changes (1mo, 6mo, 1yr)
-        period_changes = {}
-        for label, period in [("1mo", "1mo"), ("6mo", "6mo"), ("1yr", "1y")]:
-            prices = fetcher.get_price_history(entry.ticker, period=period)
-            if prices and len(prices) >= 2:
-                old_close = prices[0].close
-                period_changes[label] = ((live_price - old_close) / old_close) * 100
-            else:
-                period_changes[label] = None
-
         watchlist_data.append({
             "ticker": entry.ticker,
             "name": entry.company_name,
@@ -62,9 +52,6 @@ def index():
             "change_pct": change_pct,
             "change_dollar": change_dollar,
             "added_date": entry.added_date[:10],
-            "chg_1mo": period_changes["1mo"],
-            "chg_6mo": period_changes["6mo"],
-            "chg_1yr": period_changes["1yr"],
         })
 
     # Aggregate portfolio stats
@@ -99,6 +86,22 @@ def index():
     if active_date not in picks_by_date and dates:
         active_date = dates[0]
 
+    pending_drops = db.fetchone(
+        """SELECT COUNT(*) as cnt FROM monthly_audit_entries
+           WHERE user_id = ? AND recommendation = 'drop' AND drop_acknowledged = 0""",
+        (user_id,),
+    )
+    pending_drop_count = pending_drops["cnt"] if pending_drops else 0
+
+    latest_audit_month = None
+    if pending_drop_count > 0:
+        latest = db.fetchone(
+            "SELECT audit_month FROM monthly_audits WHERE user_id = ? ORDER BY audit_month DESC LIMIT 1",
+            (user_id,),
+        )
+        if latest:
+            latest_audit_month = latest["audit_month"]
+
     return render_template(
         "dashboard.html",
         watchlist=watchlist_data,
@@ -106,4 +109,6 @@ def index():
         picks_by_date=picks_by_date,
         active_date=active_date,
         dates=dates,
+        pending_drop_count=pending_drop_count,
+        latest_audit_month=latest_audit_month,
     )

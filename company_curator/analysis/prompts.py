@@ -4,6 +4,8 @@ SRP: This module only defines prompt templates — no execution logic.
 OCP: New prompts can be added without modifying existing ones.
 """
 
+from __future__ import annotations
+
 from datetime import datetime
 
 
@@ -81,7 +83,79 @@ def movement_notes_prompt(
     )
 
 
-def discovery_scoring_prompt(tickers_with_data: str) -> str:
+def monthly_audit_prompt(stocks_data: str) -> str:
+    return (
+        f"Today is {_today()}. You are conducting a monthly portfolio audit. "
+        "Review ALL stocks below and produce a structured assessment.\n\n"
+        "For each stock, score it 0-100 on current investment merit considering:\n"
+        "- Price performance since entry\n"
+        "- Revenue growth trajectory\n"
+        "- Competitive position and moat strength\n"
+        "- Valuation relative to growth\n"
+        "- Catalyst pipeline for next 3-6 months\n"
+        "- Risk factors\n\n"
+        "Then categorize each stock as one of:\n"
+        '- "top_pick" — the 3 best investment opportunities right now (rank 1-3)\n'
+        '- "hold" — worth keeping on the watchlist\n'
+        '- "drop" — should be removed (deteriorating fundamentals, broken thesis, '
+        "or better opportunities exist)\n\n"
+        "Respond in this exact JSON format:\n"
+        "```json\n"
+        "{\n"
+        '  "top_picks": [\n'
+        '    {"ticker": "XXX", "rank": 1, "score": 92, "reasoning": "..."}\n'
+        "  ],\n"
+        '  "holds": [\n'
+        '    {"ticker": "XXX", "score": 60, "reasoning": "..."}\n'
+        "  ],\n"
+        '  "drops": [\n'
+        '    {"ticker": "XXX", "score": 25, "reasoning": "..."}\n'
+        "  ],\n"
+        '  "summary": "2-3 sentence portfolio overview"\n'
+        "}\n"
+        "```\n\n"
+        f"=== WATCHLIST STOCKS ===\n{stocks_data}\n=== END DATA ==="
+    )
+
+
+def _investor_profile_block(
+    risk_profile: str | None,
+    sectors: str | None,
+    avoid: str | None,
+) -> str:
+    """Build a short profile block to tailor scoring to a specific investor.
+
+    Returns an empty string when no preferences are provided, so the prompt is
+    identical to the original generic version.
+    """
+    if not any((risk_profile, sectors, avoid)):
+        return ""
+
+    lines = ["=== INVESTOR PROFILE ===", "Tailor your picks to this investor:"]
+    if risk_profile:
+        lines.append(
+            f"- Risk appetite: {risk_profile}. "
+            "Conservative favors larger, established, lower-volatility companies; "
+            "aggressive favors smaller, higher-growth, higher-volatility companies."
+        )
+    if sectors:
+        lines.append(
+            f"- Sectors of interest: {sectors}. Strongly prefer companies in these "
+            "areas; only pick outside them if a candidate is exceptional."
+        )
+    if avoid:
+        lines.append(f"- Avoid: {avoid}. Do not pick anything matching these exclusions.")
+    lines.append("=== END PROFILE ===\n")
+    return "\n".join(lines)
+
+
+def discovery_scoring_prompt(
+    tickers_with_data: str,
+    risk_profile: str | None = None,
+    sectors: str | None = None,
+    avoid: str | None = None,
+) -> str:
+    profile_block = _investor_profile_block(risk_profile, sectors, avoid)
     return (
         f"Today is {_today()}. You are an investment research analyst focused on "
         "finding high-growth companies with strong qualitative factors. Analyze the "
@@ -91,6 +165,7 @@ def discovery_scoring_prompt(tickers_with_data: str) -> str:
         "3. Market sentiment and momentum\n"
         "4. Competitive moat strength\n"
         "5. Catalyst potential (upcoming events that could drive growth)\n\n"
+        f"{profile_block}"
         "For each of your top 3 picks, provide:\n"
         "- Ticker\n"
         "- Company name\n"

@@ -94,11 +94,23 @@ def add_confirm(ticker: str):
 
     metrics = fetcher.get_financial_metrics(ticker)
 
+    # Period changes (1M, 6M, YTD) to match stock detail view
+    current_price = info.current_price
+    period_changes: dict[str, float | None] = {}
+    for label, period in [("1mo", "1mo"), ("6mo", "6mo"), ("ytd", "ytd")]:
+        prices = fetcher.get_price_history(ticker, period=period)
+        if prices and len(prices) >= 2:
+            old_close = prices[0].close
+            period_changes[label] = ((current_price - old_close) / old_close) * 100
+        else:
+            period_changes[label] = None
+
     return render_template(
         "add_confirm.html",
         ticker=ticker,
         info=info,
         metrics=metrics,
+        period_changes=period_changes,
     )
 
 
@@ -174,6 +186,25 @@ def detail(ticker: str):
     current_price = fetcher.get_current_price(ticker) or entry.entry_price
     change_pct = ((current_price - entry.entry_price) / entry.entry_price) * 100
 
+    # Company info and financial metrics
+    info = fetcher.get_company_info(ticker)
+    metrics = fetcher.get_financial_metrics(ticker)
+
+    # Period changes (1M, 6M, 1Y)
+    period_changes = {}
+    for label, period in [("1mo", "1mo"), ("6mo", "6mo"), ("ytd", "ytd")]:
+        prices = fetcher.get_price_history(ticker, period=period)
+        if prices and len(prices) >= 2:
+            old_close = prices[0].close
+            period_changes[label] = ((current_price - old_close) / old_close) * 100
+        else:
+            period_changes[label] = None
+
+    latest_report = db.fetchone(
+        "SELECT date FROM daily_picks WHERE user_id = ? AND ticker = ? ORDER BY date DESC LIMIT 1",
+        (user_id, ticker),
+    )
+
     return render_template(
         "stock_detail.html",
         entry=entry,
@@ -181,6 +212,10 @@ def detail(ticker: str):
         change_pct=change_pct,
         price_history=price_history,
         movement_notes=movement_notes,
+        info=info,
+        metrics=metrics,
+        period_changes=period_changes,
+        latest_report=latest_report,
     )
 
 

@@ -30,13 +30,25 @@ class QualitativeScorer:
         self._client = client
         self._model = model
 
-    def score_candidates(self, candidates: list[ScreenerResult], top_n: int = 3) -> list[ScoredCompany]:
+    def score_candidates(
+        self,
+        candidates: list[ScreenerResult],
+        top_n: int = 3,
+        risk_profile: str | None = None,
+        sectors: str | None = None,
+        avoid: str | None = None,
+    ) -> list[ScoredCompany]:
         """Score candidates and return the top N picks."""
         if not candidates:
             return []
 
         tickers_data = self._format_candidates(candidates)
-        prompt = discovery_scoring_prompt(tickers_data)
+        prompt = discovery_scoring_prompt(
+            tickers_data,
+            risk_profile=risk_profile,
+            sectors=sectors,
+            avoid=avoid,
+        )
 
         response = self._client.messages.create(
             model=self._model,

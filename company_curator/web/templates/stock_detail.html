@@ -4,6 +4,9 @@
 {% block page_actions %}
 <span class="pill {{ 'pill-green' if change_pct >= 0 else 'pill-red' }}">{{ "%+.1f"|format(change_pct) }}%</span>
 <span class="chip">&#9733; watching</span>
+{% if latest_report %}
+<a href="/report/{{ latest_report['date'] }}/{{ entry.ticker }}" class="btn btn-primary btn-sm">view report</a>
+{% endif %}
 <form method="POST" action="/watchlist/remove/{{ entry.ticker }}" style="display:inline;"
       onsubmit="return confirm('Remove {{ entry.ticker }}?')">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -13,7 +16,7 @@
 
 {% block content %}
 <!-- Price strip -->
-<div class="card card-pad" style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;">
+<div class="card card-pad grid-7col">
     <div>
         <div class="data-label">Price</div>
         <div class="data-val" style="font-size:22px;">${{ "%.2f"|format(current_price) }}</div>
@@ -30,10 +33,85 @@
         <div style="font-family:'JetBrains Mono',monospace;font-size:14px;">{{ entry.added_date[:10] }}</div>
     </div>
     <div>
-        <div class="data-label">Status</div>
-        <div style="font-size:14px;font-weight:600;">Active</div>
+        <div class="data-label">1M</div>
+        {% if period_changes.get('1mo') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['1mo'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['1mo']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">—</div>{% endif %}
+    </div>
+    <div>
+        <div class="data-label">6M</div>
+        {% if period_changes.get('6mo') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['6mo'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['6mo']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">—</div>{% endif %}
+    </div>
+    <div>
+        <div class="data-label">YTD</div>
+        {% if period_changes.get('ytd') is not none %}
+        <div class="data-val {{ 'positive' if period_changes['ytd'] >= 0 else 'negative' }}" style="font-size:18px;">{{ "%+.1f"|format(period_changes['ytd']) }}%</div>
+        {% else %}<div class="data-val" style="font-size:18px;color:var(--ink-4);">—</div>{% endif %}
     </div>
 </div>
+
+{% if info or metrics %}
+<div class="card card-pad grid-4col">
+    {% if info %}
+    <div>
+        <div class="data-label">Mkt Cap</div>
+        <div class="data-val" style="font-size:18px;">
+            {% if info.market_cap >= 1000000000000 %}
+                ${{ "%.1f"|format(info.market_cap / 1000000000000) }}T
+            {% elif info.market_cap >= 1000000000 %}
+                ${{ "%.1f"|format(info.market_cap / 1000000000) }}B
+            {% else %}
+                ${{ "%.0f"|format(info.market_cap / 1000000) }}M
+            {% endif %}
+        </div>
+    </div>
+    <div>
+        <div class="data-label">Sector</div>
+        <div style="font-size:13px;font-weight:600;">{{ info.sector }}</div>
+    </div>
+    {% endif %}
+    {% if metrics %}
+    <div>
+        <div class="data-label">YoY Revenue</div>
+        <div class="data-val {{ 'positive' if metrics.revenue_growth_yoy and metrics.revenue_growth_yoy > 0 else 'negative' }}" style="font-size:18px;">
+            {{ "%+.1f"|format(metrics.revenue_growth_yoy * 100) if metrics.revenue_growth_yoy else 'N/A' }}%
+        </div>
+    </div>
+    <div>
+        <div class="data-label">Gross Margin</div>
+        <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.gross_margin * 100) if metrics.gross_margin else 'N/A' }}%</div>
+    </div>
+</div>
+<div class="card card-pad grid-4col">
+    <div>
+        <div class="data-label">P/S (TTM)</div>
+        <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.ps_ratio_ttm) if metrics.ps_ratio_ttm else 'N/A' }}x</div>
+    </div>
+    <div>
+        <div class="data-label">EV/EBITDA</div>
+        <div class="data-val" style="font-size:18px;">{{ "%.1f"|format(metrics.ev_ebitda) if metrics.ev_ebitda else 'N/A' }}x</div>
+    </div>
+    <div>
+        <div class="data-label">Revenue TTM</div>
+        <div class="data-val" style="font-size:18px;">
+            {% if metrics.revenue_ttm %}
+                {% if metrics.revenue_ttm >= 1000000000 %}
+                    ${{ "%.1f"|format(metrics.revenue_ttm / 1000000000) }}B
+                {% else %}
+                    ${{ "%.0f"|format(metrics.revenue_ttm / 1000000) }}M
+                {% endif %}
+            {% else %}N/A{% endif %}
+        </div>
+    </div>
+    <div>
+        <div class="data-label">Industry</div>
+        <div style="font-size:12px;color:var(--ink-2);">{{ info.industry if info else 'N/A' }}</div>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
 
 {% if entry.notes %}
 <div class="card card-pad card-accent-yellow">

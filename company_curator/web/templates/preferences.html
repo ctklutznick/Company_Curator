@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Preferences — Company Curator{% endblock %}
+{% block page_title %}My Preferences{% endblock %}
+
+{% block content %}
+<div style="max-width: 640px;">
+    {% if is_welcome %}
+    <div class="card card-pad card-accent-yellow" style="margin-bottom: 20px;">
+        <div class="section-title" style="font-size: 18px;">Welcome to Curator</div>
+        <p style="font-size: 14px; color: var(--ink-2); margin-top: 6px;">
+            Answer a few quick questions and your personal stock finder will start
+            curating picks just for you — delivered to your inbox every morning.
+        </p>
+    </div>
+    {% endif %}
+
+    <div class="card card-pad">
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <!-- Risk profile -->
+            <label>Risk Profile</label>
+            <p style="font-size: 12px; color: var(--ink-3); margin: 4px 0 10px;">
+                Shapes how big and how speculative your picks are.
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px;">
+                {% set descriptions = {
+                    'conservative': 'Larger, established companies. Steadier, lower volatility.',
+                    'moderate': 'A balance of stability and growth.',
+                    'aggressive': 'Smaller, fast-growing companies. Higher risk, higher ceiling.'
+                } %}
+                {% for rp in risk_profiles %}
+                <label style="display:flex; gap:10px; align-items:flex-start; text-transform:none; letter-spacing:normal; font-family:'Fraunces',Georgia,serif; font-size:14px; color:var(--ink); cursor:pointer; border:1.2px solid var(--line); border-radius:4px 6px 3px 5px; padding:10px 12px;">
+                    <input type="radio" name="risk_profile" value="{{ rp }}" style="margin-top:3px;"
+                        {% if (prefs and prefs.risk_profile == rp) or (not prefs and rp == 'moderate') %}checked{% endif %}>
+                    <span>
+                        <strong style="text-transform:capitalize;">{{ rp }}</strong><br>
+                        <span style="font-size:12px; color:var(--ink-3);">{{ descriptions[rp] }}</span>
+                    </span>
+                </label>
+                {% endfor %}
+            </div>
+
+            <!-- Sectors -->
+            <label>Sectors of Interest</label>
+            <p style="font-size: 12px; color: var(--ink-3); margin: 4px 0 10px;">
+                Pick any that interest you. Leave all unchecked for no preference.
+            </p>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:22px;">
+                {% for sector in sector_choices %}
+                <label style="display:flex; gap:8px; align-items:center; text-transform:none; letter-spacing:normal; font-family:'Fraunces',Georgia,serif; font-size:13px; color:var(--ink); cursor:pointer;">
+                    <input type="checkbox" name="sectors" value="{{ sector }}"
+                        {% if sector in selected_sectors %}checked{% endif %}>
+                    {{ sector }}
+                </label>
+                {% endfor %}
+            </div>
+
+            <!-- Avoid -->
+            <label for="avoid">Things to Avoid</label>
+            <p style="font-size: 12px; color: var(--ink-3); margin: 4px 0 8px;">
+                Anything you don't want recommended (e.g. "meme stocks, crypto, tobacco").
+            </p>
+            <textarea id="avoid" name="avoid" rows="2" maxlength="500"
+                placeholder="meme stocks, crypto-related companies">{{ prefs.avoid if prefs and prefs.avoid else '' }}</textarea>
+
+            <!-- Daily picks -->
+            <label for="daily_picks" style="margin-top: 18px;">Picks Per Day</label>
+            <p style="font-size: 12px; color: var(--ink-3); margin: 4px 0 8px;">
+                How many companies to surface each morning (1–5).
+            </p>
+            <input type="text" id="daily_picks" name="daily_picks" maxlength="1"
+                value="{{ prefs.daily_picks if prefs and prefs.daily_picks else 3 }}"
+                style="width: 80px;">
+
+            <div style="margin-top: 24px;">
+                <button type="submit" class="btn btn-primary">Save Preferences</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

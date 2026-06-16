@@ -1,7 +1,8 @@
-"""Daily scheduler for automated discovery and monitoring.
+"""Scheduler pipelines for automated discovery, monitoring, and auditing.
 
-SRP: Only responsible for orchestrating the daily pipeline.
-DIP: All dependencies are injected via the constructor.
+SRP: Only responsible for orchestrating pipelines.
+DIP: All dependencies are injected via constructors.
+OCP: New pipelines (MonthlyAuditPipeline) added without modifying DailyPipeline.
 """
 
 from __future__ import annotations
@@ -14,13 +15,16 @@ from company_curator.analysis.deep_dive import DeepDiveAnalyzer
 from company_curator.analysis.movement_notes import MovementNotesGenerator
 from company_curator.analysis.peer_comparison import PeerComparisonAnalyzer
 from company_curator.analysis.short_report import ShortReportAnalyzer
+from company_curator.analysis.watchlist_audit import WatchlistAuditor
 from company_curator.config import Config
 from company_curator.data.db import Database
 from company_curator.data.fetcher import BaseDataFetcher
+from company_curator.discovery.preferences import PreferencesManager
 from company_curator.discovery.scorer import QualitativeScorer, ScoredCompany
 from company_curator.discovery.screener import GrowthScreener
 from company_curator.notifications.emailer import BaseNotifier
 from company_curator.watchlist.alerts import AlertManager
+from company_curator.watchlist.audit_manager import AuditManager
 from company_curator.watchlist.manager import WatchlistManager
 from company_curator.watchlist.monitor import GrowthMonitor
 from company_curator.watchlist.price_tracker import PriceTracker
@@ -101,13 +105,22 @@ class DailyPipeline:
         return "\n".join(lines)
 
     def _run_discovery(self) -> list[ScoredCompany]:
-        screener = GrowthScreener(self._fetcher)
+        prefs = PreferencesManager(self._db).resolve(
+            self._user_id, self._config.discovery.daily_picks
+        )
+
+        screener = GrowthScreener(
+            self._fetcher,
+            min_market_cap=prefs.min_market_cap,
+            min_revenue_growth=prefs.min_revenue_growth,
+        )
         scorer = QualitativeScorer(self._client)
 
-        # Exclude tickers picked in the last 7 days so each day is fresh
+        # Exclude tickers picked recently so each day is fresh
+        dedup_days = self._config.discovery.dedup_days
         recent = self._db.fetchall(
             "SELECT DISTINCT ticker FROM daily_picks "
-            "WHERE user_id = ? AND date >= date('now', '-7 days')",
+            f"WHERE user_id = ? AND date >= date('now', '-{dedup_days} days')",
             (self._user_id,),
         )
         recent_tickers = {r["ticker"] for r in recent}
@@ -118,7 +131,13 @@ class DailyPipeline:
         if not candidates:
             return []
 
-        return scorer.score_candidates(candidates, top_n=self._config.discovery.daily_picks)
+        return scorer.score_candidates(
+            candidates,
+            top_n=prefs.daily_picks,
+            risk_profile=prefs.risk_profile,
+            sectors=prefs.sectors,
+            avoid=prefs.avoid,
+        )
 
     def _run_analysis(self, pick: ScoredCompany) -> str:
         deep_dive = DeepDiveAnalyzer(self._client, self._fetcher)
@@ -247,3 +266,106 @@ class DailyPipeline:
         report_path = reports_dir / f"report_{date}.md"
         report_path.write_text(report)
         print(f"[Pipeline] Report saved to {report_path}")
+
+
+class MonthlyAuditPipeline:
+    """Orchestrates the monthly watchlist audit."""
+
+    def __init__(
+        self,
+        config: Config,
+        db: Database,
+        fetcher: BaseDataFetcher,
+        client: anthropic.Anthropic,
+        notifier: BaseNotifier,
+        user_id: int,
+    ) -> None:
+        self._config = config
+        self._db = db
+        self._fetcher = fetcher
+        self._client = client
+        self._notifier = notifier
+        self._user_id = user_id
+
+    def run(self) -> str:
+        """Run the monthly audit pipeline. Returns the full report."""
+        now = datetime.now()
+        audit_month = now.strftime("%Y-%m")
+
+        print("[Audit] Running monthly watchlist audit...")
+
+        manager = WatchlistManager(self._db, self._user_id)
+        entries = manager.list_active()
+
+        if not entries:
+            print("[Audit] No stocks on watchlist. Skipping audit.")
+            return "No stocks on watchlist to audit."
+
+        print(f"[Audit] Auditing {len(entries)} watchlist stocks...")
+        auditor = WatchlistAuditor(self._client, self._fetcher)
+        result = auditor.audit(entries)
+
+        print("[Audit] Saving audit results...")
+        audit_mgr = AuditManager(self._db, self._user_id)
+        audit_mgr.save_audit(audit_month, result)
+
+        report = self._format_report(audit_month, result)
+
+        print("[Audit] Sending audit email...")
+        self._notifier.send(
+            subject=f"Monthly Watchlist Audit — {audit_month}",
+            body=report,
+        )
+
+        self._save_report(audit_month, report)
+
+        print("[Audit] Monthly audit complete.")
+        return report
+
+    def _format_report(self, audit_month: str, result) -> str:
+        base_url = self._config.web.base_url
+        lines = [f"# Monthly Watchlist Audit — {audit_month}\n"]
+        lines.append(f"{result.summary}\n")
+
+        if result.top_picks:
+            lines.append("## Top 3 Investment Picks\n")
+            for i, pick in enumerate(result.top_picks, 1):
+                lines.append(
+                    f"{i}. **{pick.ticker}** — {pick.company_name} "
+                    f"(Score: {pick.score:.0f}/100)\n"
+                    f"   Price: ${pick.entry_price:.2f} → ${pick.current_price:.2f} "
+                    f"({pick.price_change_pct:+.1f}%)\n"
+                    f"   {pick.reasoning}\n"
+                )
+
+        if result.drops:
+            lines.append("## Stocks to Consider Dropping\n")
+            for drop in result.drops:
+                lines.append(
+                    f"- **{drop.ticker}** — {drop.company_name} "
+                    f"(Score: {drop.score:.0f}/100)\n"
+                    f"  Price: ${drop.entry_price:.2f} → ${drop.current_price:.2f} "
+                    f"({drop.price_change_pct:+.1f}%)\n"
+                    f"  {drop.reasoning}\n"
+                )
+            lines.append(
+                f"\n[Review and respond to drop proposals]({base_url}/audit/{audit_month})\n"
+            )
+
+        if result.holds:
+            lines.append("## Holds\n")
+            for hold in result.holds:
+                lines.append(
+                    f"- **{hold.ticker}** — {hold.company_name} "
+                    f"(Score: {hold.score:.0f}/100) — "
+                    f"{hold.price_change_pct:+.1f}% since entry"
+                )
+
+        return "\n".join(lines)
+
+    def _save_report(self, audit_month: str, report: str) -> None:
+        reports_dir = self._config.reports_dir
+        reports_dir.mkdir(exist_ok=True)
+        report_path = reports_dir / f"audit_{audit_month}.md"
+        report_path.write_text(report)
+        print(f"[Audit] Report saved to {report_path}")

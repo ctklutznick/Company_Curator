@@ -1,0 +1,38 @@
+# Fly.io deployment config for Company Curator.
+# Rename `app` below to a unique name before first deploy (or let `fly launch` set it).
+
+app = "company-curator"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  PORT = "8080"
+  # Run the daily pipeline in-process. Keep WEB_CONCURRENCY=1 so the scheduler
+  # starts exactly once (multiple gunicorn workers would each schedule a copy
+  # and send duplicate emails).
+  RUN_SCHEDULER = "1"
+  WEB_CONCURRENCY = "1"
+  # SQLite lives on the persistent volume mounted at /data so data survives
+  # deploys and restarts.
+  DATABASE_URL = "sqlite:////data/company_curator.db"
+
+# Persistent volume — create once with:
+#   fly volumes create curator_data --size 1 --region iad
+[mounts]
+  source = "curator_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # The machine must stay running so the 7:00 AM scheduler fires. Do NOT let
+  # Fly auto-stop it on idle, or daily emails won't be sent.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

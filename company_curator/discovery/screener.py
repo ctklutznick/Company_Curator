@@ -30,8 +30,15 @@ class BaseScreener(ABC):
 class GrowthScreener(BaseScreener):
     """Screens for high-growth companies with strong fundamentals."""
 
-    def __init__(self, fetcher: BaseDataFetcher) -> None:
+    def __init__(
+        self,
+        fetcher: BaseDataFetcher,
+        min_market_cap: float = 500_000_000,
+        min_revenue_growth: float = 0.05,
+    ) -> None:
         self._fetcher = fetcher
+        self._min_market_cap = min_market_cap
+        self._min_revenue_growth = min_revenue_growth
 
     def screen(self, count: int = 20) -> list[ScreenerResult]:
         """Screen the market for high-growth candidates."""
@@ -57,8 +64,11 @@ class GrowthScreener(BaseScreener):
 
     def _passes_filters(self, info: CompanyInfo, metrics: FinancialMetrics) -> bool:
         """Apply basic quantitative filters before qualitative scoring."""
-        if info.market_cap < 500_000_000:
+        if info.market_cap < self._min_market_cap:
             return False
-        if metrics.revenue_growth_yoy is not None and metrics.revenue_growth_yoy < 0.05:
+        if (
+            metrics.revenue_growth_yoy is not None
+            and metrics.revenue_growth_yoy < self._min_revenue_growth
+        ):
             return False
         return True

@@ -14,6 +14,21 @@ from email.mime.text import MIMEText
 from company_curator.config import EmailConfig
 
 
+def welcome_email_markdown(display_name: str, preferences_url: str) -> str:
+    """Compose the onboarding welcome email body (markdown)."""
+    return (
+        f"## Welcome, {display_name}\n\n"
+        "Company Curator finds high-growth stocks for you every morning and "
+        "delivers them straight to this inbox — no setup required on your end.\n\n"
+        "First, tell us what you're into. It takes about a minute, and it's what "
+        "makes your daily picks *yours*: your risk appetite, the sectors you care "
+        "about, and anything you'd rather avoid.\n\n"
+        f"**[Set up my preferences]({preferences_url})**\n\n"
+        "Once you're done, your personalized finder kicks in with the next daily "
+        "report. You can change your answers anytime from the Preferences page.\n"
+    )
+
+
 class BaseNotifier(ABC):
     """Abstract notifier — allows adding Slack, SMS, etc. without modifying existing code (OCP)."""
 

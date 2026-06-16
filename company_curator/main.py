@@ -14,7 +14,7 @@ from company_curator.data.db import Database
 from company_curator.data.fetcher import YFinanceDataFetcher
 from company_curator.data.models import User
 from company_curator.notifications.emailer import EmailNotifier
-from company_curator.scheduler import DailyPipeline
+from company_curator.scheduler import DailyPipeline, MonthlyAuditPipeline
 from company_curator.watchlist.manager import WatchlistManager
 
 DEFAULT_USER_ID = 1
@@ -201,6 +201,15 @@ def cmd_status(args: argparse.Namespace) -> None:
     db.close()
 
 
+def cmd_audit(args: argparse.Namespace) -> None:
+    """Run the monthly watchlist audit."""
+    config, db, client, fetcher, notifier = _build_dependencies()
+    pipeline = MonthlyAuditPipeline(config, db, fetcher, client, notifier, user_id=DEFAULT_USER_ID)
+    report = pipeline.run()
+    print("\n" + report)
+    db.close()
+
+
 def cmd_serve(args: argparse.Namespace) -> None:
     """Start the web interface."""
     config, db, client, fetcher, notifier = _build_dependencies()
@@ -312,6 +321,9 @@ def main() -> None:
 
     watchlist_sub.add_parser("list", help="List watchlist entries")
 
+    # audit
+    subparsers.add_parser("audit", help="Run monthly watchlist audit")
+
     # status
     subparsers.add_parser("status", help="Show watchlist status and alerts")
 
@@ -329,6 +341,7 @@ def main() -> None:
     commands = {
         "discover": cmd_discover,
         "analyze": cmd_analyze,
+        "audit": cmd_audit,
         "status": cmd_status,
         "serve": cmd_serve,
         "schedule": cmd_schedule,

@@ -20,6 +20,29 @@ def _get_bcrypt() -> Bcrypt:
     return current_app.extensions["bcrypt"]
 
 
+def _send_welcome_email(user: User) -> None:
+    """Send the onboarding welcome email to a new user via the global SMTP
+    account, linking them to the preferences questionnaire. Best-effort: never
+    blocks signup if email fails."""
+    from dataclasses import replace
+
+    from company_curator.notifications.emailer import (
+        EmailNotifier,
+        welcome_email_markdown,
+    )
+
+    config = current_app.config["APP_CONFIG"]
+    try:
+        preferences_url = f"{config.web.base_url}/preferences/?welcome=1"
+        notifier = EmailNotifier(replace(config.email, email_to=user.email))
+        notifier.send(
+            subject="Welcome to Company Curator — set up your picks",
+            body=welcome_email_markdown(user.display_name, preferences_url),
+        )
+    except Exception as e:  # noqa: BLE001 — email must never break signup
+        print(f"[Auth] Failed to send welcome email to {user.email}: {e}")
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
     if current_user.is_authenticated:
@@ -83,9 +106,11 @@ def signup():
         db.session.add(user)
         db.session.commit()
 
+        _send_welcome_email(user)
+
         login_user(user, remember=True)
         flash(f"Welcome, {display_name}!", "success")
-        return redirect(url_for("dashboard.index"))
+        return redirect(url_for("preferences.edit", welcome=1))
 
     return render_template("signup.html")
 

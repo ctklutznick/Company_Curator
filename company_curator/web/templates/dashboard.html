@@ -6,6 +6,16 @@
 {% endblock %}
 
 {% block content %}
+{% if pending_drop_count and pending_drop_count > 0 %}
+<div class="card card-pad card-accent-red" style="display:flex;align-items:center;gap:12px;">
+    <span style="font-size:18px;">&#9888;</span>
+    <div style="flex:1;font-size:14px;">
+        Monthly audit has <strong>{{ pending_drop_count }} drop proposal{{ 's' if pending_drop_count != 1 }}</strong> awaiting your review.
+    </div>
+    <a href="/audit/{{ latest_audit_month }}" class="btn btn-sm">review audit</a>
+</div>
+{% endif %}
+
 <!-- Portfolio aggregate -->
 {% if watchlist %}
 <div class="stat-grid" style="margin-bottom:18px;">
@@ -118,53 +128,18 @@
                 <span style="margin-left:auto;font-size:11px;color:var(--ink-3);">{{ watchlist|length }} tickers</span>
             </div>
             {% if watchlist %}
+                <div style="max-height:400px;overflow-y:auto;">
                 {% for stock in watchlist %}
-                <div style="padding:8px 0;{% if not loop.last %}border-bottom:1px dashed var(--ink-4);{% endif %}">
-                    <div style="display:flex;align-items:center;gap:10px;">
-                        <div style="width:50px;">
-                            <a href="/watchlist/{{ stock.ticker }}" class="ticker-link" style="font-size:13px;">{{ stock.ticker }}</a>
-                        </div>
-                        <div style="flex:1;font-size:12px;color:var(--ink-2);">{{ stock.name }}</div>
-                        <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="font-size:13px;font-weight:700;">
-                            {{ "%+.1f"|format(stock.change_pct) }}%
-                        </div>
+                <a href="/watchlist/{{ stock.ticker }}" style="display:flex;align-items:center;gap:10px;padding:6px 4px;text-decoration:none;color:inherit;{% if not loop.last %}border-bottom:1px dashed var(--ink-4);{% endif %}transition:background .15s;" onmouseover="this.style.background='var(--paper-2)'" onmouseout="this.style.background='transparent'">
+                    <div class="mono" style="width:46px;font-size:12px;font-weight:700;color:var(--ink-1);">{{ stock.ticker }}</div>
+                    <div style="flex:1;font-size:12px;color:var(--ink-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ stock.name }}</div>
+                    <div class="mono" style="font-size:12px;color:var(--ink-2);white-space:nowrap;">${{ "%.2f"|format(stock.current_price) }}</div>
+                    <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="width:52px;text-align:right;font-size:12px;font-weight:700;white-space:nowrap;">
+                        {{ "%+.1f"|format(stock.change_pct) }}%
                     </div>
-                    <div style="display:flex;gap:12px;margin-top:4px;padding-left:60px;flex-wrap:wrap;">
-                        <div style="font-size:11px;">
-                            <span class="data-label" style="font-size:9px;">Entry</span>
-                            <span class="mono" style="font-size:11px;">${{ "%.2f"|format(stock.entry_price) }}</span>
-                        </div>
-                        <div style="font-size:11px;">
-                            <span class="data-label" style="font-size:9px;">Now</span>
-                            <span class="mono" style="font-size:11px;">${{ "%.2f"|format(stock.current_price) }}</span>
-                        </div>
-                        <div style="font-size:11px;">
-                            <span class="data-label" style="font-size:9px;">P&L</span>
-                            <span class="mono {{ 'positive' if stock.change_dollar >= 0 else 'negative' }}" style="font-size:11px;">
-                                {{ "%+.2f"|format(stock.change_dollar) }}
-                            </span>
-                        </div>
-                        <div style="font-size:11px;border-left:1px solid var(--ink-4);padding-left:10px;">
-                            <span class="data-label" style="font-size:9px;">1M</span>
-                            {% if stock.chg_1mo is not none %}
-                            <span class="mono {{ 'positive' if stock.chg_1mo >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_1mo) }}%</span>
-                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
-                        </div>
-                        <div style="font-size:11px;">
-                            <span class="data-label" style="font-size:9px;">6M</span>
-                            {% if stock.chg_6mo is not none %}
-                            <span class="mono {{ 'positive' if stock.chg_6mo >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_6mo) }}%</span>
-                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
-                        </div>
-                        <div style="font-size:11px;">
-                            <span class="data-label" style="font-size:9px;">1Y</span>
-                            {% if stock.chg_1yr is not none %}
-                            <span class="mono {{ 'positive' if stock.chg_1yr >= 0 else 'negative' }}" style="font-size:11px;">{{ "%+.1f"|format(stock.chg_1yr) }}%</span>
-                            {% else %}<span class="mono" style="font-size:11px;color:var(--ink-4);">—</span>{% endif %}
-                        </div>
-                    </div>
-                </div>
+                </a>
                 {% endfor %}
+                </div>
             {% else %}
                 <div style="padding:12px;color:var(--ink-3);font-size:13px;">
                     Watchlist is empty. Add stocks from your picks above.
@@ -190,28 +165,6 @@
             </div>
         </div>
 
-        <!-- Sentiment radar -->
-        <div class="card card-pad">
-            <div class="section-title" style="margin-bottom:8px;">Sentiment radar</div>
-            <div class="section-subtitle" style="margin-bottom:10px;">WATCHLIST &middot; SINCE ENTRY</div>
-            {% if watchlist %}
-                {% for stock in watchlist[:5] %}
-                <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
-                    <div class="mono" style="width:50px;font-size:11px;font-weight:700;">{{ stock.ticker }}</div>
-                    <div style="flex:1;position:relative;height:10px;border:1.3px solid var(--line);border-radius:999px;background:var(--paper-2);overflow:hidden;">
-                        {% set bar_width = [50 + stock.change_pct * 2, 95]|min %}
-                        {% set bar_width = [bar_width, 5]|max %}
-                        <div style="position:absolute;left:0;top:0;bottom:0;width:{{ bar_width }}%;background:{% if stock.change_pct >= 0 %}var(--hl-green){% else %}var(--hl-red){% endif %};"></div>
-                    </div>
-                    <div class="mono {{ 'positive' if stock.change_pct >= 0 else 'negative' }}" style="width:42px;text-align:right;font-size:11px;">
-                        {{ "%+.1f"|format(stock.change_pct) }}
-                    </div>
-                </div>
-                {% endfor %}
-            {% else %}
-                <div style="color:var(--ink-3);font-size:12px;">Add stocks to see sentiment data.</div>
-            {% endif %}
-        </div>
     </div>
 </div>
 

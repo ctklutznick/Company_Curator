@@ -396,9 +396,118 @@
             grid-template-columns: repeat(3, 1fr);
             gap: 12px;
         }
+        .grid-4col {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 14px;
+        }
+        .grid-5col {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+        }
+        .grid-6col {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 14px;
+        }
+        .grid-7col {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 14px;
+        }
+
+        /* Mobile hamburger */
+        .mobile-topbar {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: var(--paper-2);
+            border-bottom: 1.5px solid var(--ink);
+            padding: 10px 16px;
+            align-items: center;
+            gap: 12px;
+        }
+        .mobile-topbar .sidebar-logo { display: flex; }
+        .hamburger {
+            margin-left: auto;
+            background: none;
+            border: 1.5px solid var(--line);
+            border-radius: 4px;
+            padding: 6px 8px;
+            font-size: 18px;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 999;
+        }
+
+        /* Responsive breakpoint */
+        @media (max-width: 768px) {
+            .mobile-topbar { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                z-index: 1001;
+                width: 260px;
+                padding-top: 16px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay.open { display: block; }
+            .main {
+                margin-left: 0;
+                padding-top: 52px;
+            }
+            .topbar {
+                padding: 12px 16px;
+            }
+            .topbar-title { font-size: 20px; }
+            .content { padding: 16px; }
+
+            /* Stack grids */
+            .grid-2col { grid-template-columns: 1fr !important; }
+            .grid-3col { grid-template-columns: 1fr !important; }
+            .stat-grid { grid-template-columns: 1fr 1fr !important; }
+            .grid-4col { grid-template-columns: 1fr 1fr !important; }
+            .grid-5col { grid-template-columns: 1fr 1fr !important; }
+            .grid-6col { grid-template-columns: 1fr 1fr !important; }
+            .grid-7col { grid-template-columns: 1fr 1fr !important; }
+
+            /* Tables scroll horizontally */
+            .card { overflow-x: auto; }
+            table { min-width: 600px; }
+
+            /* Date tabs scroll */
+            .date-tabs { padding: 0 8px; }
+            .date-tab { padding: 8px 10px; font-size: 10px; }
+
+            /* Topbar wrapping */
+            .topbar { flex-wrap: wrap; }
+            .topbar-actions { flex-wrap: wrap; }
+        }
     </style>
 </head>
 <body>
+    <!-- Mobile top bar -->
+    <div class="mobile-topbar">
+        <a href="/" class="sidebar-logo">
+            <div class="sidebar-logo-icon">&#10022;</div>
+            <div>
+                <div class="sidebar-logo-text" style="font-size:18px;">Curator</div>
+            </div>
+        </a>
+        <button class="hamburger" onclick="document.querySelector('.sidebar').classList.toggle('open');document.querySelector('.sidebar-overlay').classList.toggle('open');" aria-label="Menu">&#9776;</button>
+    </div>
+    <div class="sidebar-overlay" onclick="document.querySelector('.sidebar').classList.remove('open');this.classList.remove('open');"></div>
+
     <!-- Sidebar -->
     <div class="sidebar">
         <a href="/" class="sidebar-logo">
@@ -422,12 +531,18 @@
             <a href="/watchlist/" class="nav-item {% if '/watchlist' in request.path and '/add' not in request.path %}active{% endif %}">
                 <span>&#9733;</span> Watchlist
             </a>
+            <a href="/audit/" class="nav-item {% if '/audit' in request.path %}active{% endif %}">
+                <span>&#128203;</span> Monthly Audit
+            </a>
         </div>
         {% block sidebar_extra %}{% endblock %}
 
         {% if current_user.is_authenticated %}
         <div class="sidebar-watching" style="border-top: 1px dashed var(--ink-4); padding-top: 12px;">
             <div class="sidebar-watching-title">ACCOUNT</div>
+            <a href="/preferences/" class="nav-item {% if '/preferences' in request.path %}active{% endif %}">
+                <span>&#9776;</span> Preferences
+            </a>
             <a href="/auth/settings" class="nav-item {% if '/auth/settings' in request.path %}active{% endif %}">
                 <span>&#9881;</span> Settings
             </a>
@@ -472,6 +587,107 @@ if (searchInput) {
         this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
     });
 }
+
+/* ── Mobile sidebar close on nav ── */
+document.querySelectorAll('.sidebar .nav-item').forEach(function(link) {
+    link.addEventListener('click', function() {
+        document.querySelector('.sidebar').classList.remove('open');
+        var overlay = document.querySelector('.sidebar-overlay');
+        if (overlay) overlay.classList.remove('open');
+    });
+});
+
+/* ── SPA-style client navigation ── */
+(function() {
+    var cache = {};
+    var parser = new DOMParser();
+
+    function isLocalLink(a) {
+        return a.href &&
+            a.origin === location.origin &&
+            !a.hasAttribute('download') &&
+            a.target !== '_blank' &&
+            !a.closest('form');
+    }
+
+    function updatePage(html, url, push) {
+        var doc = parser.parseFromString(html, 'text/html');
+        var newContent = doc.querySelector('.content');
+        var newTitle = doc.querySelector('title');
+        var newTopbar = doc.querySelector('.topbar');
+        var newSidebar = doc.querySelector('.sidebar');
+
+        if (!newContent) { location.href = url; return; }
+
+        document.querySelector('.content').innerHTML = newContent.innerHTML;
+        if (newTitle) document.title = newTitle.textContent;
+        if (newTopbar) document.querySelector('.topbar').innerHTML = newTopbar.innerHTML;
+        if (newSidebar) document.querySelector('.sidebar').innerHTML = newSidebar.innerHTML;
+
+        if (push) history.pushState({ url: url }, '', url);
+
+        // Re-bind search input behavior
+        var si = document.getElementById('search-input');
+        if (si) {
+            si.addEventListener('input', function() {
+                this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            });
+        }
+
+        // Re-run any inline scripts in the new content
+        document.querySelectorAll('.content script').forEach(function(old) {
+            var s = document.createElement('script');
+            s.textContent = old.textContent;
+            old.parentNode.replaceChild(s, old);
+        });
+
+        window.scrollTo(0, 0);
+    }
+
+    function navigate(url, push) {
+        if (cache[url]) {
+            updatePage(cache[url], url, push);
+            return;
+        }
+        fetch(url, { headers: { 'X-Requested-With': 'SPA' } })
+            .then(function(r) { return r.text(); })
+            .then(function(html) {
+                cache[url] = html;
+                updatePage(html, url, push);
+            })
+            .catch(function() { location.href = url; });
+    }
+
+    // Intercept clicks on internal links
+    document.addEventListener('click', function(e) {
+        var a = e.target.closest('a');
+        if (!a || !isLocalLink(a)) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        // Skip if it's a logout or form-action link
+        if (a.href.includes('/logout')) return;
+        e.preventDefault();
+        if (a.href === location.href) return;
+        navigate(a.href, true);
+    });
+
+    // Handle back/forward
+    window.addEventListener('popstate', function(e) {
+        navigate(location.href, false);
+    });
+
+    // Prefetch on hover
+    document.addEventListener('mouseover', function(e) {
+        var a = e.target.closest('a');
+        if (!a || !isLocalLink(a) || cache[a.href]) return;
+        fetch(a.href, { headers: { 'X-Requested-With': 'SPA' } })
+            .then(function(r) { return r.text(); })
+            .then(function(html) { cache[a.href] = html; })
+            .catch(function() {});
+    });
+
+    // Seed cache with current page
+    cache[location.href] = document.documentElement.outerHTML;
+})();
 </script>
 </body>
 </html>

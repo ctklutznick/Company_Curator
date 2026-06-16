@@ -10,7 +10,21 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
+import requests
 from dotenv import load_dotenv
+
+
+def _detect_ngrok_url() -> str | None:
+    """Check if ngrok is running and return its public URL."""
+    try:
+        resp = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=1)
+        tunnels = resp.json().get("tunnels", [])
+        for t in tunnels:
+            if t.get("proto") == "https":
+                return t["public_url"]
+    except Exception:
+        pass
+    return None
 
 
 @dataclass(frozen=True)
@@ -32,6 +46,7 @@ class DiscoveryConfig:
     daily_picks: int = 3
     min_market_cap: float = 500_000_000  # $500M minimum
     min_volume: int = 100_000  # Minimum avg daily volume
+    dedup_days: int = 30  # Don't re-recommend a ticker within this window
 
 
 @dataclass(frozen=True)
@@ -77,10 +92,18 @@ def load_config(env_path: Path | None = None) -> Config:
         email_to=os.environ.get("EMAIL_RECIPIENT", ""),
     )
 
+    explicit_base_url = os.environ.get("WEB_BASE_URL")
+    port = int(os.environ.get("WEB_PORT", "5050"))
+    if explicit_base_url:
+        base_url = explicit_base_url
+    else:
+        ngrok_url = _detect_ngrok_url()
+        base_url = ngrok_url or f"http://127.0.0.1:{port}"
+
     web = WebConfig(
         host=os.environ.get("WEB_HOST", "0.0.0.0"),
-        port=int(os.environ.get("WEB_PORT", "5050")),
-        base_url=os.environ.get("WEB_BASE_URL", "http://127.0.0.1:5050"),
+        port=port,
+        base_url=base_url,
         secret_key=os.environ.get("WEB_SECRET_KEY", "company-curator-dev-key"),
     )
 
