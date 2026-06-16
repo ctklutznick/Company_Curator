@@ -40,19 +40,6 @@
         </div>
     </div>
 </div>
-
-<!-- Portfolio growth chart -->
-<div class="card card-pad card-accent-blue" style="margin-bottom:18px;">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-        <div class="section-title" style="margin:0;">Portfolio growth</div>
-        <span class="section-subtitle">TOTAL % CHANGE SINCE YOU STARTED</span>
-        <span id="pf-since" class="mono" style="font-size:11px;color:var(--ink-3);margin-left:auto;"></span>
-    </div>
-    <div style="position:relative;height:240px;">
-        <canvas id="pf-chart"></canvas>
-        <div id="pf-msg" style="position:absolute;inset:0;display:none;place-items:center;color:var(--ink-3);font-size:13px;"></div>
-    </div>
-</div>
 {% endif %}
 
 <div class="grid-2col">
@@ -180,6 +167,21 @@
 
     </div>
 </div>
+
+{% if watchlist %}
+<!-- Portfolio growth chart -->
+<div class="card card-pad card-accent-blue" style="margin-top:18px;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div class="section-title" style="margin:0;">Portfolio growth</div>
+        <span class="section-subtitle">TOTAL % CHANGE SINCE YOU STARTED</span>
+        <span id="pf-since" class="mono" style="font-size:11px;color:var(--ink-3);margin-left:auto;"></span>
+    </div>
+    <div style="position:relative;height:240px;">
+        <canvas id="pf-chart"></canvas>
+        <div id="pf-msg" style="position:absolute;inset:0;display:none;place-items:center;color:var(--ink-3);font-size:13px;"></div>
+    </div>
+</div>
+{% endif %}
 
 <script>
 function askAI() {
