@@ -107,6 +107,11 @@
             <label for="confirm_password">Confirm Password</label>
             <input type="password" id="confirm_password" name="confirm_password" required>
 
+            {% if invite_required %}
+            <label for="invite_code">Invite Code</label>
+            <input type="text" id="invite_code" name="invite_code" required>
+            {% endif %}
+
             <button type="submit" class="btn">Sign Up</button>
         </form>
 

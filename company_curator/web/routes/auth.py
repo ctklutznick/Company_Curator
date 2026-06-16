@@ -5,6 +5,7 @@ SRP: Only handles authentication and user settings routes.
 
 from __future__ import annotations
 
+import hmac
 import re
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
@@ -74,6 +75,8 @@ def signup():
     if current_user.is_authenticated:
         return redirect(url_for("dashboard.index"))
 
+    invite_required = current_app.config["APP_CONFIG"].web.signup_invite_code
+
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         display_name = request.form.get("display_name", "").strip()
@@ -81,6 +84,10 @@ def signup():
         confirm = request.form.get("confirm_password", "")
 
         errors = []
+        if invite_required:
+            submitted_code = request.form.get("invite_code", "").strip()
+            if not hmac.compare_digest(submitted_code, invite_required):
+                errors.append("A valid invite code is required.")
         if not email or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
             errors.append("A valid email is required.")
         if not display_name or len(display_name) > 100:
@@ -93,13 +100,13 @@ def signup():
         if errors:
             for e in errors:
                 flash(e, "error")
-            return render_template("signup.html")
+            return render_template("signup.html", invite_required=bool(invite_required))
 
         db = current_app.config["APP_DB"]
         existing = db.session.query(User).filter_by(email=email).first()
         if existing:
             flash("An account with that email already exists.", "error")
-            return render_template("signup.html")
+            return render_template("signup.html", invite_required=bool(invite_required))
 
         pw_hash = _get_bcrypt().generate_password_hash(password).decode("utf-8")
         user = User(email=email, password_hash=pw_hash, display_name=display_name)

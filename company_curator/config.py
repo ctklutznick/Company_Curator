@@ -62,6 +62,11 @@ class WebConfig:
     port: int = 5050
     base_url: str = "http://127.0.0.1:5050"
     secret_key: str = "company-curator-dev-key"
+    # When set, signup requires this code. Empty string = open signup.
+    signup_invite_code: str = ""
+    # Auto-login as user 1 for local dev. Must be explicitly enabled so a
+    # misconfigured base_url can never silently bypass auth in production.
+    dev_auto_login: bool = False
 
 
 @dataclass(frozen=True)
@@ -105,6 +110,8 @@ def load_config(env_path: Path | None = None) -> Config:
         port=port,
         base_url=base_url,
         secret_key=os.environ.get("WEB_SECRET_KEY", "company-curator-dev-key"),
+        signup_invite_code=os.environ.get("SIGNUP_INVITE_CODE", ""),
+        dev_auto_login=os.environ.get("DEV_AUTO_LOGIN", "").lower() in ("1", "true", "yes"),
     )
 
     return Config(

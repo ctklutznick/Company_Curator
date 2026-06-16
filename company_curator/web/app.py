@@ -193,11 +193,11 @@ def create_app(
 
     # Register blueprints
     from company_curator.web.routes.ai_chat import ai_chat_bp
+    from company_curator.web.routes.audit import audit_bp
     from company_curator.web.routes.auth import auth_bp
     from company_curator.web.routes.dashboard import dashboard_bp
     from company_curator.web.routes.preferences import preferences_bp
     from company_curator.web.routes.reports import reports_bp
-    from company_curator.web.routes.audit import audit_bp
     from company_curator.web.routes.watchlist import watchlist_bp
 
     app.register_blueprint(auth_bp, url_prefix="/auth")
@@ -215,9 +215,10 @@ def create_app(
     limiter.limit("5 per minute")(auth_bp)
     limiter.limit("20 per hour")(ai_chat_bp)
 
-    # Dev auto-login: when running locally, auto-log in the default user
-    is_local = config.web.base_url.startswith("http://127") or config.web.base_url.startswith("http://localhost")
-    if is_local:
+    # Dev auto-login: auto-log in the default user. Must be explicitly enabled
+    # via DEV_AUTO_LOGIN so a misconfigured base_url can never silently bypass
+    # auth in production.
+    if config.web.dev_auto_login:
         from flask_login import current_user, login_user
 
         @app.before_request
