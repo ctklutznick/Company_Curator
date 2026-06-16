@@ -7,13 +7,52 @@ from __future__ import annotations
 
 from collections import OrderedDict
 
-from flask import Blueprint, current_app, render_template, request
+from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
 
+from company_curator.data.fetcher import BaseDataFetcher
 from company_curator.watchlist.manager import WatchlistManager
 from company_curator.watchlist.price_tracker import PriceTracker
 
 dashboard_bp = Blueprint("dashboard", __name__)
+
+_VALID_PERIODS = ("1mo", "3mo", "6mo", "ytd", "1y")
+
+
+def _portfolio_series(fetcher: BaseDataFetcher, tickers: list[str], period: str) -> list[dict]:
+    """Sum one share of each watchlist ticker into a single value-over-time line.
+
+    Forward-fills each ticker's last known close so a missing day for one stock
+    doesn't make the combined line dip.
+    """
+    per_ticker: dict[str, dict[str, float]] = {}
+    all_dates: set[str] = set()
+    for ticker in tickers:
+        closes = {
+            p.date.strftime("%Y-%m-%d"): p.close
+            for p in fetcher.get_price_history(ticker, period=period)
+        }
+        if closes:
+            per_ticker[ticker] = closes
+            all_dates.update(closes)
+
+    if not per_ticker:
+        return []
+
+    last_known: dict[str, float | None] = {t: None for t in per_ticker}
+    points: list[dict] = []
+    for date in sorted(all_dates):
+        total = 0.0
+        have_any = False
+        for ticker, closes in per_ticker.items():
+            if date in closes:
+                last_known[ticker] = closes[date]
+            if last_known[ticker] is not None:
+                total += last_known[ticker]
+                have_any = True
+        if have_any:
+            points.append({"date": date, "value": round(total, 2)})
+    return points
 
 
 @dashboard_bp.route("/")
@@ -112,3 +151,20 @@ def index():
         pending_drop_count=pending_drop_count,
         latest_audit_month=latest_audit_month,
     )
+
+
+@dashboard_bp.route("/portfolio-history")
+@login_required
+def portfolio_history():
+    """Combined value-over-time of the active watchlist, for the dashboard chart."""
+    db = current_app.config["APP_DB"]
+    fetcher = current_app.config["APP_FETCHER"]
+    user_id = current_user.id
+
+    period = request.args.get("period", "6mo")
+    if period not in _VALID_PERIODS:
+        period = "6mo"
+
+    entries = WatchlistManager(db, user_id).list_active()
+    points = _portfolio_series(fetcher, [e.ticker for e in entries], period)
+    return jsonify({"period": period, "points": points})

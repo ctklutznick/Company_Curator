@@ -40,6 +40,27 @@
         </div>
     </div>
 </div>
+
+<!-- Portfolio value chart -->
+<div class="card card-pad card-accent-blue" style="margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <div class="section-title" style="margin:0;">Portfolio value</div>
+            <span class="section-subtitle">1 SHARE OF EACH &middot; OVER TIME</span>
+        </div>
+        <div id="pf-range" style="display:flex;gap:4px;">
+            <button class="btn btn-sm" data-period="1mo">1M</button>
+            <button class="btn btn-sm" data-period="3mo">3M</button>
+            <button class="btn btn-sm btn-primary" data-period="6mo">6M</button>
+            <button class="btn btn-sm" data-period="ytd">YTD</button>
+            <button class="btn btn-sm" data-period="1y">1Y</button>
+        </div>
+    </div>
+    <div style="position:relative;height:240px;">
+        <canvas id="pf-chart"></canvas>
+        <div id="pf-msg" style="position:absolute;inset:0;display:none;place-items:center;color:var(--ink-3);font-size:13px;"></div>
+    </div>
+</div>
 {% endif %}
 
 <div class="grid-2col">
@@ -218,6 +239,84 @@ function askAI() {
         btn.textContent = 'ask';
     });
 }
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function () {
+    const canvas = document.getElementById('pf-chart');
+    if (!canvas) return;
+    const msg = document.getElementById('pf-msg');
+    const rangeBar = document.getElementById('pf-range');
+    let chart = null;
+
+    function showMsg(text) {
+        msg.textContent = text;
+        msg.style.display = 'grid';
+        canvas.style.display = 'none';
+    }
+
+    function render(points) {
+        msg.style.display = 'none';
+        canvas.style.display = 'block';
+        const labels = points.map(p => p.date);
+        const values = points.map(p => p.value);
+        const up = values.length < 2 || values[values.length - 1] >= values[0];
+        const color = up ? '#4a7c3a' : '#c5463a';
+        const fill = up ? 'rgba(74,124,58,0.12)' : 'rgba(197,70,58,0.12)';
+        if (chart) chart.destroy();
+        chart = new Chart(canvas, {
+            type: 'line',
+            data: { labels, datasets: [{
+                data: values,
+                borderColor: color,
+                backgroundColor: fill,
+                fill: true,
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.15,
+            }] },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: c => '$' + c.parsed.y.toFixed(2) } },
+                },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 6, font: { size: 10 } }, grid: { display: false } },
+                    y: { ticks: { callback: v => '$' + v, font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } },
+                },
+                interaction: { mode: 'index', intersect: false },
+            },
+        });
+    }
+
+    function load(period) {
+        showMsg('Loading…');
+        fetch('/portfolio-history?period=' + encodeURIComponent(period))
+            .then(r => r.json())
+            .then(d => {
+                if (!d.points || d.points.length === 0) {
+                    showMsg('Not enough price data yet.');
+                    return;
+                }
+                render(d.points);
+            })
+            .catch(() => showMsg('Could not load chart.'));
+    }
+
+    rangeBar.addEventListener('click', function (e) {
+        const btn = e.target.closest('button[data-period]');
+        if (!btn) return;
+        rangeBar.querySelectorAll('button').forEach(b => b.classList.remove('btn-primary'));
+        btn.classList.add('btn-primary');
+        load(btn.dataset.period);
+    });
+
+    load('6mo');
+})();
 </script>
 
 <style>
