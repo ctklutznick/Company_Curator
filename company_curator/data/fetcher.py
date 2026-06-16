@@ -64,7 +64,9 @@ class BaseDataFetcher(ABC):
         ...
 
     @abstractmethod
-    def get_price_history(self, ticker: str, period: str = "3mo") -> list[PriceData]:
+    def get_price_history(
+        self, ticker: str, period: str = "3mo", start: str | None = None
+    ) -> list[PriceData]:
         ...
 
     @abstractmethod
@@ -111,10 +113,12 @@ class YFinanceDataFetcher(BaseDataFetcher):
         except Exception:
             return None
 
-    def get_price_history(self, ticker: str, period: str = "3mo") -> list[PriceData]:
+    def get_price_history(
+        self, ticker: str, period: str = "3mo", start: str | None = None
+    ) -> list[PriceData]:
         try:
             stock = yf.Ticker(ticker)
-            hist = stock.history(period=period)
+            hist = stock.history(start=start) if start else stock.history(period=period)
             return [
                 PriceData(
                     ticker=ticker,

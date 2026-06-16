@@ -16,21 +16,19 @@ from company_curator.watchlist.price_tracker import PriceTracker
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
-_VALID_PERIODS = ("1mo", "3mo", "6mo", "ytd", "1y")
+def _portfolio_series(fetcher: BaseDataFetcher, tickers: list[str], start: str) -> list[dict]:
+    """Total % growth of the watchlist (one share of each) since `start`.
 
-
-def _portfolio_series(fetcher: BaseDataFetcher, tickers: list[str], period: str) -> list[dict]:
-    """Sum one share of each watchlist ticker into a single value-over-time line.
-
-    Forward-fills each ticker's last known close so a missing day for one stock
-    doesn't make the combined line dip.
+    Sums each ticker's close per day (forward-filling gaps so a missing day for
+    one stock doesn't dip the line), then expresses every day as a percent change
+    from the first day's combined value — so the line begins at 0%.
     """
     per_ticker: dict[str, dict[str, float]] = {}
     all_dates: set[str] = set()
     for ticker in tickers:
         closes = {
             p.date.strftime("%Y-%m-%d"): p.close
-            for p in fetcher.get_price_history(ticker, period=period)
+            for p in fetcher.get_price_history(ticker, start=start)
         }
         if closes:
             per_ticker[ticker] = closes
@@ -40,7 +38,7 @@ def _portfolio_series(fetcher: BaseDataFetcher, tickers: list[str], period: str)
         return []
 
     last_known: dict[str, float | None] = {t: None for t in per_ticker}
-    points: list[dict] = []
+    totals: list[tuple[str, float]] = []
     for date in sorted(all_dates):
         total = 0.0
         have_any = False
@@ -51,8 +49,15 @@ def _portfolio_series(fetcher: BaseDataFetcher, tickers: list[str], period: str)
                 total += last_known[ticker]
                 have_any = True
         if have_any:
-            points.append({"date": date, "value": round(total, 2)})
-    return points
+            totals.append((date, total))
+
+    if not totals:
+        return []
+
+    baseline = totals[0][1]
+    if baseline <= 0:
+        return []
+    return [{"date": d, "pct": round((v / baseline - 1) * 100, 2)} for d, v in totals]
 
 
 @dashboard_bp.route("/")
@@ -156,15 +161,16 @@ def index():
 @dashboard_bp.route("/portfolio-history")
 @login_required
 def portfolio_history():
-    """Combined value-over-time of the active watchlist, for the dashboard chart."""
+    """Watchlist % growth since the user started, for the dashboard chart."""
     db = current_app.config["APP_DB"]
     fetcher = current_app.config["APP_FETCHER"]
     user_id = current_user.id
 
-    period = request.args.get("period", "6mo")
-    if period not in _VALID_PERIODS:
-        period = "6mo"
-
     entries = WatchlistManager(db, user_id).list_active()
-    points = _portfolio_series(fetcher, [e.ticker for e in entries], period)
-    return jsonify({"period": period, "points": points})
+    if not entries:
+        return jsonify({"start": None, "points": []})
+
+    # Anchor at the earliest watchlist add — when this portfolio began.
+    start = min(e.added_date[:10] for e in entries)
+    points = _portfolio_series(fetcher, [e.ticker for e in entries], start)
+    return jsonify({"start": start, "points": points})
