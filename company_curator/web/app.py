@@ -10,7 +10,7 @@ import re
 from datetime import timedelta
 
 import anthropic
-from flask import Flask
+from flask import Flask, request
 from flask_bcrypt import Bcrypt
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -163,9 +163,14 @@ def create_app(
     def load_user(user_id: str) -> User | None:
         return db.session.query(User).get(int(user_id))
 
-    # Rate limiting
+    # Rate limiting — key off the real client IP. Behind Fly's proxy,
+    # get_remote_address returns the proxy IP (shared by all users), so prefer
+    # the Fly-Client-IP header the proxy sets per request.
+    def _client_ip() -> str:
+        return request.headers.get("Fly-Client-IP") or get_remote_address()
+
     limiter = Limiter(
-        get_remote_address,
+        _client_ip,
         app=app,
         default_limits=["200 per hour"],
         storage_uri="memory://",
