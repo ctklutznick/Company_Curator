@@ -17,7 +17,7 @@ class ShortReportAnalyzer:
         self,
         client: anthropic.Anthropic,
         fetcher: BaseDataFetcher,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
     ) -> None:
         self._client = client
         self._fetcher = fetcher

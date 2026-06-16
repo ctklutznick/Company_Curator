@@ -26,7 +26,7 @@ class ScoredCompany:
 class QualitativeScorer:
     """Uses Claude to rank companies on qualitative factors."""
 
-    def __init__(self, client: anthropic.Anthropic, model: str = "claude-sonnet-4-20250514") -> None:
+    def __init__(self, client: anthropic.Anthropic, model: str = "claude-sonnet-4-6") -> None:
         self._client = client
         self._model = model
 

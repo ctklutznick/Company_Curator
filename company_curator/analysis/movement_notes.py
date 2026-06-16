@@ -22,7 +22,7 @@ class MovementNotesGenerator:
         fetcher: BaseDataFetcher,
         db: Database,
         user_id: int,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         threshold_pct: float = 2.0,
     ) -> None:
         self._client = client
