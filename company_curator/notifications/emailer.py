@@ -8,6 +8,7 @@ DIP: Depends on EmailConfig, not hardcoded SMTP settings.
 import re
 import smtplib
 from abc import ABC, abstractmethod
+from dataclasses import replace
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
@@ -84,7 +85,9 @@ class EmailNotifier(BaseNotifier):
                 email_to=user.email_to or user.email,
             )
             return EmailNotifier(config)
-        return EmailNotifier(fallback)
+        # No per-user SMTP: use the global account but deliver to the user's inbox,
+        # not the global recipient.
+        return EmailNotifier(replace(fallback, email_to=user.email_to or user.email))
 
     @staticmethod
     def _markdown_to_html(md: str) -> str:
