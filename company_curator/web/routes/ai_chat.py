@@ -114,4 +114,5 @@ def ask():
         answer = response.content[0].text
         return jsonify({"answer": answer})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error("AI chat request failed: %s", e)
+        return jsonify({"error": "Something went wrong. Please try again."}), 500

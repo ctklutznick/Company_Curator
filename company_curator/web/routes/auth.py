@@ -119,7 +119,7 @@ def signup():
         flash(f"Welcome, {display_name}!", "success")
         return redirect(url_for("preferences.edit", welcome=1))
 
-    return render_template("signup.html")
+    return render_template("signup.html", invite_required=bool(invite_required))
 
 
 @auth_bp.route("/logout")
