@@ -43,6 +43,8 @@ def edit():
     manager = PreferencesManager(db)
 
     if request.method == "POST":
+        is_first_time = manager.get(current_user.id) is None
+
         risk_profile = request.form.get("risk_profile", "moderate").strip().lower()
         selected_sectors = request.form.getlist("sectors")
         sectors = ",".join(s for s in selected_sectors if s in SECTOR_CHOICES)
@@ -61,7 +63,18 @@ def edit():
             avoid=avoid or None,
             daily_picks=daily_picks,
         )
-        flash("Your preferences are saved — your next daily finder is tailored to them.", "success")
+
+        if is_first_time:
+            # Send a personalized first report now rather than waiting for 7am.
+            from company_curator.scheduler_service import run_user_pipeline_async
+            run_user_pipeline_async(current_app.config["APP_CONFIG"], db, current_user.id)
+            flash(
+                "Your preferences are saved — building your first report now. "
+                "It will arrive in your inbox in a few minutes.",
+                "success",
+            )
+        else:
+            flash("Your preferences are saved — your next daily finder is tailored to them.", "success")
         return redirect(url_for("dashboard.index"))
 
     prefs = manager.get(current_user.id)
