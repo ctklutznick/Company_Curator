@@ -27,16 +27,17 @@ def start_scheduler(config: Config, db: Database) -> BackgroundScheduler:
     scheduler.add_job(
         func=_run_all_users,
         trigger="cron",
-        hour=7,
+        hour=9,
         minute=0,
         day_of_week="mon-fri",
+        timezone="America/Los_Angeles",
         args=[config, db],
         id="daily_pipeline",
         replace_existing=True,
     )
 
     scheduler.start()
-    print("[Scheduler] Started — daily pipeline at 7:00 AM Mon-Fri")
+    print("[Scheduler] Started — daily pipeline at 9:00 AM Pacific Mon-Fri")
     return scheduler
 
 
