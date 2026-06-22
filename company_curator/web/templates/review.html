@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Add picks — Company Curator{% endblock %}
+{% block page_title %}Today's picks &middot; <span style="font-family:'Fraunces',serif;font-size:18px;color:var(--ink-3);">{{ date }}</span>{% endblock %}
+{% block page_actions %}
+<span class="chip">+ add to watchlist</span>
+{% endblock %}
+
+{% block content %}
+<div class="card card-pad">
+    <div class="section-title" style="margin-bottom:6px;">Pick which companies to add</div>
+    <div style="color:var(--ink-3);font-size:13px;margin-bottom:16px;">
+        These are the picks from your {{ date }} report. Check the ones you want, then add them all at once.
+    </div>
+
+    <form method="POST" action="/watchlist/add-batch" id="batch-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        {% for pick in picks %}
+        {% set already = pick.ticker in on_watchlist %}
+        <label style="display:flex;align-items:flex-start;gap:12px;padding:12px 4px;border-bottom:1px dashed var(--ink-4);{{ 'opacity:0.5;' if already else 'cursor:pointer;' }}">
+            <input type="checkbox" name="tickers" value="{{ pick.ticker }}"
+                   style="margin-top:4px;width:16px;height:16px;"
+                   {{ 'checked' if not already else 'disabled' }}>
+            <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span style="font-weight:700;font-size:16px;">{{ pick.ticker }}</span>
+                    <span style="color:var(--ink-3);font-size:14px;">{{ pick.company_name }}</span>
+                    <span class="score-badge">{{ pick.score|int }}/100</span>
+                    {% if already %}<span class="chip">on watchlist</span>{% endif %}
+                </div>
+                {% if pick.reasoning %}
+                <div style="color:var(--ink-2);font-size:13px;margin-top:4px;">{{ pick.reasoning }}</div>
+                {% endif %}
+            </div>
+        </label>
+        {% endfor %}
+
+        <div style="display:flex;gap:10px;margin-top:18px;">
+            <button type="submit" class="btn btn-primary">&#10003; Add selected</button>
+            <button type="button" class="btn" onclick="checkAll()">Select all &amp; add</button>
+            <a href="/" class="btn">cancel</a>
+        </div>
+    </form>
+</div>
+
+<style>
+    .score-badge {
+        display:inline-block; background:var(--ink); color:var(--paper);
+        padding:1px 9px; border-radius:999px;
+        font-family:'Fraunces',serif; font-size:12px; font-weight:600;
+    }
+</style>
+
+<script>
+function checkAll() {
+    document.querySelectorAll('#batch-form input[name="tickers"]:not([disabled])')
+        .forEach(cb => cb.checked = true);
+    document.getElementById('batch-form').submit();
+}
+</script>
+{% endblock %}

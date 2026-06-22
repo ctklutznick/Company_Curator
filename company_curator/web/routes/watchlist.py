@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from company_curator.analysis.movement_notes import MovementNotesGenerator
@@ -67,6 +67,79 @@ def list_all():
         })
 
     return render_template("watchlist.html", watchlist=watchlist_data)
+
+
+@watchlist_bp.route("/review/<date>")
+@login_required
+def review(date: str):
+    """Show the day's picks so the user can add some or all in one place."""
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+        flash("Invalid date.", "error")
+        return redirect(url_for("dashboard.index"))
+
+    db = current_app.config["APP_DB"]
+    user_id = current_user.id
+
+    picks = db.fetchall(
+        """SELECT ticker, company_name, score, reasoning FROM daily_picks
+           WHERE user_id = ? AND date = ? ORDER BY score DESC""",
+        (user_id, date),
+    )
+    if not picks:
+        flash("No picks found for that date.", "info")
+        return redirect(url_for("dashboard.index"))
+
+    manager = WatchlistManager(db, user_id)
+    on_watchlist = {p["ticker"] for p in picks if manager.exists(p["ticker"])}
+
+    return render_template(
+        "review.html",
+        date=date,
+        picks=picks,
+        on_watchlist=on_watchlist,
+    )
+
+
+@watchlist_bp.route("/add-batch", methods=["POST"])
+@login_required
+def add_batch():
+    """Add several picked tickers at once from the review page."""
+    db = current_app.config["APP_DB"]
+    fetcher = current_app.config["APP_FETCHER"]
+    user_id = current_user.id
+
+    manager = WatchlistManager(db, user_id)
+
+    added: list[str] = []
+    skipped: list[str] = []
+    for raw in request.form.getlist("tickers"):
+        ticker = raw.upper().strip()
+        if not re.match(r"^[A-Z0-9]{1,10}$", ticker) or manager.exists(ticker):
+            skipped.append(ticker)
+            continue
+        info = fetcher.get_company_info(ticker)
+        if not info:
+            skipped.append(ticker)
+            continue
+        metrics = fetcher.get_financial_metrics(ticker)
+        manager.add(
+            ticker=ticker,
+            company_name=info.name,
+            entry_price=info.current_price,
+            entry_revenue=metrics.revenue_ttm if metrics else None,
+        )
+        added.append(ticker)
+
+    if added:
+        PriceTracker(db, fetcher, user_id).record_daily_prices(added)
+        msg = f"Added {len(added)} to your watchlist: {', '.join(added)}."
+        if skipped:
+            msg += f" Skipped {len(skipped)} (already added or not found)."
+        flash(msg, "success")
+    else:
+        flash("Nothing added — those tickers were already on your watchlist or could not be found.", "info")
+
+    return redirect(url_for("watchlist.list_all"))
 
 
 @watchlist_bp.route("/add/<ticker>")

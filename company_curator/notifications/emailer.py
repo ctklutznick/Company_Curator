@@ -395,6 +395,13 @@ def _convert_section(text: str) -> str:
         # Blank line
         elif not line.strip():
             pass
+        # Standalone link paragraph — render as a button
+        elif re.fullmatch(r"\*{0,2}\[(.+?)\]\((.+?)\)\*{0,2}", line.strip()):
+            m = re.fullmatch(r"\*{0,2}\[(.+?)\]\((.+?)\)\*{0,2}", line.strip())
+            html_lines.append(
+                f'<div style="text-align:center;margin:18px 0;">'
+                f'<a class="btn" href="{m.group(2)}">{m.group(1)}</a></div>'
+            )
         # Regular paragraph
         else:
             html_lines.append(f"<p>{_inline(line)}</p>")

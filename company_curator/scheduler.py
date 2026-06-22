@@ -56,6 +56,11 @@ class DailyPipeline:
 
         report_sections.append(f"# Company Curator Daily Report — {today}\n")
 
+        review_url = f"{self._config.web.base_url}/watchlist/review/{today}"
+        report_sections.append(
+            f"**[Take me to the website so I can pick which ones to add →]({review_url})**"
+        )
+
         # Step 1: Discovery
         print("[Pipeline] Running discovery...")
         picks = self._run_discovery()

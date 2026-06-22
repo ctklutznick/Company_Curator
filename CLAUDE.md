@@ -2,9 +2,14 @@
 
 ## Workflow (MANDATORY — follow every time before coding)
 
-1. **SOLID First** — Design/review against SOLID principles before writing any code
-2. **Code** — Implement following the design
-3. **GitHub/Document** — Commit with clear messages, push, update docs
+1. **Plan First** — Before writing any code, produce a written plan broken into a to-do checklist of discrete steps. Track progress against it as you work.
+2. **SOLID** — Design/review against SOLID principles before writing any code
+3. **Code** — Implement following the design
+4. **GitHub/Document** — Commit with clear messages, push, update docs
+
+## Ideas Backlog
+
+Park future ideas and not-yet-scoped features in `IDEAS.md` rather than building them immediately.
 
 ## SOLID Principles
 
