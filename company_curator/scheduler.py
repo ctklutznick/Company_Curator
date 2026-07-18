@@ -58,41 +58,77 @@ class DailyPipeline:
 
         review_url = f"{self._config.web.base_url}/watchlist/review/{today}"
         report_sections.append(
-            f"**[Take me to the website so I can pick which ones to add →]({review_url})**"
+            f"**Today's picks are in.** Skim them below, or add the ones you like "
+            f"to your watchlist in one place.\n\n"
+            f"**[Review & add today's picks →]({review_url})**"
         )
 
         # Step 1: Discovery
         print("[Pipeline] Running discovery...")
-        picks = self._run_discovery()
+        picks: list[ScoredCompany] = []
+        discovery_error: str | None = None
+        try:
+            picks = self._run_discovery()
+        except Exception as e:
+            discovery_error = str(e)
+            print(f"[Pipeline] Discovery failed: {e}")
+
         if picks:
             report_sections.append(self._format_discovery_section(picks))
             # Step 2: Deep analysis on each pick
             print("[Pipeline] Running deep analysis...")
             for pick in picks:
-                analysis = self._run_analysis(pick)
+                try:
+                    analysis = self._run_analysis(pick)
+                except Exception as e:
+                    print(f"[Pipeline] Analysis failed for {pick.ticker}: {e}")
+                    analysis = (
+                        f"## {pick.ticker} — {pick.name}\n\n"
+                        f"_Analysis unavailable today: {e}_\n"
+                    )
                 report_sections.append(analysis)
-                self._save_daily_pick(today, pick, analysis)
+                try:
+                    self._save_daily_pick(today, pick, analysis)
+                except Exception as e:
+                    print(f"[Pipeline] Failed to save pick {pick.ticker}: {e}")
+        elif discovery_error:
+            report_sections.append(
+                f"## Discovery\n\n_Discovery unavailable today: {discovery_error}_\n"
+            )
         else:
             report_sections.append("## Discovery\nNo new picks today.\n")
 
         # Step 3: Watchlist monitoring
         print("[Pipeline] Monitoring watchlist...")
-        watchlist_section, alerts_section = self._run_watchlist_monitoring()
+        try:
+            watchlist_section, alerts_section = self._run_watchlist_monitoring()
+        except Exception as e:
+            print(f"[Pipeline] Watchlist monitoring failed: {e}")
+            watchlist_section = (
+                f"## Watchlist Status\n\n_Watchlist monitoring unavailable today: {e}_\n"
+            )
+            alerts_section = ""
         report_sections.append(watchlist_section)
         if alerts_section:
             report_sections.append(alerts_section)
 
         full_report = "\n---\n\n".join(report_sections)
 
-        # Step 4: Send email
+        # Step 4: Send email (always attempt, even if steps above degraded)
         print("[Pipeline] Sending email report...")
-        self._notifier.send(
-            subject=f"Company Curator — {today}",
-            body=full_report,
-        )
+        try:
+            self._notifier.send(
+                subject=f"Company Curator — {today}",
+                body=full_report,
+            )
+        except Exception as e:
+            print(f"[Pipeline] Email send failed: {e}")
 
-        # Step 5: Save report to file
-        self._save_report(today, full_report)
+        # Step 5: Save report to file (always attempt)
+        try:
+            self._save_report(today, full_report)
+        except Exception as e:
+            print(f"[Pipeline] Failed to save report: {e}")
 
         print("[Pipeline] Daily pipeline complete.")
         return full_report
@@ -224,18 +260,33 @@ class DailyPipeline:
         # Record daily prices (both legacy and OHLCV)
         tickers = [e.ticker for e in entries]
         for entry in entries:
-            monitor.record_daily_price(entry.ticker)
+            try:
+                monitor.record_daily_price(entry.ticker)
+            except Exception as e:
+                print(f"[Pipeline] Failed to record price for {entry.ticker}: {e}")
 
-        tracker = PriceTracker(self._db, self._fetcher, self._user_id)
-        tracker.record_daily_prices(tickers)
+        try:
+            tracker = PriceTracker(self._db, self._fetcher, self._user_id)
+            tracker.record_daily_prices(tickers)
+        except Exception as e:
+            print(f"[Pipeline] Failed to record OHLCV prices: {e}")
 
         # Generate movement notes for significant movers
         print("[Pipeline] Generating movement notes...")
-        notes_gen = MovementNotesGenerator(self._client, self._fetcher, self._db, self._user_id)
-        notes_gen.generate_daily_notes(tickers)
+        try:
+            notes_gen = MovementNotesGenerator(
+                self._client, self._fetcher, self._db, self._user_id
+            )
+            notes_gen.generate_daily_notes(tickers)
+        except Exception as e:
+            print(f"[Pipeline] Movement notes failed: {e}")
 
         # Check for alerts
-        new_alerts = alert_mgr.check_and_create_alerts(reports)
+        try:
+            new_alerts = alert_mgr.check_and_create_alerts(reports)
+        except Exception as e:
+            print(f"[Pipeline] Alert check failed: {e}")
+            new_alerts = []
 
         # Format watchlist section
         lines = ["## Watchlist Status\n"]
