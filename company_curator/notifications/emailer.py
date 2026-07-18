@@ -108,6 +108,8 @@ class EmailNotifier(BaseNotifier):
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=JetBrains+Mono:wght@400;500;700&display=swap');
   body {{
@@ -118,6 +120,8 @@ class EmailNotifier(BaseNotifier):
     color: #1a1714;
     line-height: 1.5;
     font-size: 15px;
+    color-scheme: light dark;
+    -webkit-text-size-adjust: 100%;
   }}
   .wrapper {{
     max-width: 680px;
@@ -297,13 +301,14 @@ class EmailNotifier(BaseNotifier):
     display: inline-block;
     border: 1.5px solid #1a1714;
     border-radius: 4px 7px 3px 6px;
-    padding: 6px 14px;
-    background: #1a1714;
+    padding: 11px 24px;
+    background: #f2d35a;
     font-family: 'Fraunces', Georgia, serif;
-    font-size: 13px;
-    color: #fbf8f3;
+    font-size: 15px;
+    color: #1a1714;
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: 0.2px;
   }}
   .footer {{
     text-align: center;
@@ -313,6 +318,44 @@ class EmailNotifier(BaseNotifier):
     font-size: 10px;
     color: #9a9089;
     letter-spacing: 0.5px;
+  }}
+  @media (max-width: 600px) {{
+    .wrapper {{ padding: 12px 8px; }}
+    .header {{ padding: 20px 16px; }}
+    .body {{ padding: 16px 14px; }}
+    .header h1 {{ font-size: 20px; }}
+    h1 {{ font-size: 18px; }}
+    h2 {{ font-size: 16px; }}
+    table {{ font-size: 12px; }}
+    th, td {{ padding: 6px 6px; font-size: 12px; }}
+    .pick-card {{ padding: 10px 12px; }}
+  }}
+  @media (prefers-color-scheme: dark) {{
+    body {{ background-color: #14110d !important; color: #f0ebe2 !important; }}
+    .header {{ background: #14110d !important; border-color: #4a423a !important; }}
+    .body {{ background: #201c17 !important; border-color: #4a423a !important; }}
+    .section {{ border-bottom-color: #4a423a !important; }}
+    h1, h2, h4 {{ color: #f0ebe2 !important; }}
+    h2 {{ border-bottom-color: #6a6057 !important; }}
+    h3 {{ color: #b3a99c !important; }}
+    p, ul, ol, li {{ color: #d8d1c5 !important; }}
+    strong {{ color: #fbf8f3 !important; }}
+    .body a:not(.btn) {{ color: #8fb0e0 !important; }}
+    .body code {{ background: #2a251f !important; color: #e8ddc9 !important; }}
+    .pick-card {{ background: #2a251f !important; border-color: #4a423a !important; }}
+    .pill {{ background: #2a251f !important; border-color: #6a6057 !important; color: #f0ebe2 !important; }}
+    .pill-green {{ background: rgba(123, 184, 95, 0.28) !important; }}
+    .pill-red {{ background: rgba(232, 131, 121, 0.24) !important; }}
+    th {{ background: #2a251f !important; color: #b3a99c !important; border-bottom-color: #6a6057 !important; }}
+    td {{ border-bottom-color: #4a423a !important; }}
+    .data-label {{ color: #b3a99c !important; }}
+    .positive {{ color: #7bb85f !important; }}
+    .negative {{ color: #e88379 !important; }}
+    .risk-high {{ color: #e88379 !important; }}
+    .risk-medium {{ color: #e6c454 !important; }}
+    .risk-low {{ color: #7bb85f !important; }}
+    .score-badge {{ background: #35302a !important; color: #fbf8f3 !important; }}
+    .footer {{ color: #8a8177 !important; }}
   }}
 </style>
 </head>
