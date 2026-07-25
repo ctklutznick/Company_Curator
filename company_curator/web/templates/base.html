@@ -451,6 +451,23 @@
             z-index: 999;
         }
 
+        /* SPA navigation progress bar */
+        .spa-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 3px;
+            width: 0;
+            background: var(--accent-yellow);
+            box-shadow: 0 0 6px rgba(242, 211, 90, 0.8);
+            z-index: 3000;
+            opacity: 0;
+            pointer-events: none;
+            transition: width 0.2s ease, opacity 0.3s ease;
+        }
+        .spa-progress.active { opacity: 1; }
+        .content.spa-loading { opacity: 0.55; transition: opacity 0.15s ease; }
+
         /* Responsive breakpoint */
         @media (max-width: 768px) {
             .mobile-topbar { display: flex; }
@@ -467,13 +484,21 @@
             .sidebar-overlay.open { display: block; }
             .main {
                 margin-left: 0;
-                padding-top: 52px;
+                padding-top: 58px;
             }
             .topbar {
                 padding: 12px 16px;
             }
             .topbar-title { font-size: 20px; }
             .content { padding: 16px; }
+
+            /* Bigger touch targets */
+            .nav-item { padding: 12px 12px; font-size: 15px; }
+            .btn { padding: 9px 15px; }
+            .card-pad { padding: 14px; }
+
+            /* Prevent iOS auto-zoom on input focus (needs >=16px) */
+            input[type="text"], textarea, #search-input { font-size: 16px !important; }
 
             /* Stack grids */
             .grid-2col { grid-template-columns: 1fr !important; }
@@ -499,6 +524,7 @@
     </style>
 </head>
 <body>
+    <div class="spa-progress" id="spa-progress"></div>
     <!-- Mobile top bar -->
     <div class="mobile-topbar">
         <a href="/" class="sidebar-logo">
@@ -647,18 +673,57 @@ document.querySelectorAll('.sidebar .nav-item').forEach(function(link) {
         window.scrollTo(0, 0);
     }
 
+    var currentNav = null;
+    var progressEl = null;
+    var progressTimer = null;
+
+    function showProgress() {
+        progressEl = progressEl || document.getElementById('spa-progress');
+        var content = document.querySelector('.content');
+        if (content) content.classList.add('spa-loading');
+        if (!progressEl) return;
+        progressEl.classList.add('active');
+        progressEl.style.width = '25%';
+        clearTimeout(progressTimer);
+        progressTimer = setTimeout(function() {
+            if (progressEl.classList.contains('active')) progressEl.style.width = '75%';
+        }, 180);
+    }
+
+    function hideProgress() {
+        var content = document.querySelector('.content');
+        if (content) content.classList.remove('spa-loading');
+        if (!progressEl) return;
+        clearTimeout(progressTimer);
+        progressEl.style.width = '100%';
+        setTimeout(function() {
+            progressEl.classList.remove('active');
+            progressEl.style.width = '0';
+        }, 220);
+    }
+
     function navigate(url, push) {
+        // Ignore repeat clicks to a destination that's already loading.
+        if (currentNav === url) return;
+        currentNav = url;
+
         if (cache[url]) {
             updatePage(cache[url], url, push);
+            currentNav = null;
             return;
         }
+
+        showProgress();
         fetch(url, { headers: { 'X-Requested-With': 'SPA' } })
             .then(function(r) { return r.text(); })
             .then(function(html) {
                 cache[url] = html;
-                updatePage(html, url, push);
+                // Only apply if this is still the destination the user wants.
+                if (currentNav === url) updatePage(html, url, push);
+                currentNav = null;
+                hideProgress();
             })
-            .catch(function() { location.href = url; });
+            .catch(function() { currentNav = null; hideProgress(); location.href = url; });
     }
 
     // Intercept clicks on internal links
