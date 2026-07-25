@@ -47,9 +47,12 @@ def list_all():
     tracker = PriceTracker(db, fetcher, user_id)
     entries = manager.list_active()
 
+    # Fetch all live prices in parallel up front (falls back per-ticker below).
+    live_prices = fetcher.get_current_prices([e.ticker for e in entries])
+
     watchlist_data: list[dict] = []
     for entry in entries:
-        live_price = fetcher.get_current_price(entry.ticker)
+        live_price = live_prices.get(entry.ticker)
         if live_price is None:
             latest = tracker.get_latest(entry.ticker)
             live_price = latest.close_price if latest else entry.entry_price

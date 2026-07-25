@@ -7,9 +7,12 @@ DIP: Consumers depend on the DataFetcher abstraction.
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
+from threading import Lock
 
 import yfinance as yf
 
@@ -73,6 +76,10 @@ class BaseDataFetcher(ABC):
     def get_current_price(self, ticker: str) -> float | None:
         ...
 
+    def get_current_prices(self, tickers: list[str]) -> dict[str, float | None]:
+        """Fetch current prices for many tickers. Default: sequential."""
+        return {t: self.get_current_price(t) for t in tickers}
+
     @abstractmethod
     def get_news(self, ticker: str, count: int = 5) -> list[NewsItem]:
         ...
@@ -80,6 +87,12 @@ class BaseDataFetcher(ABC):
 
 class YFinanceDataFetcher(BaseDataFetcher):
     """Fetches financial data from Yahoo Finance via yfinance."""
+
+    _PRICE_TTL = 120  # seconds a cached live price stays fresh
+
+    def __init__(self) -> None:
+        self._price_cache: dict[str, tuple[float, float]] = {}
+        self._price_lock = Lock()
 
     def get_company_info(self, ticker: str) -> CompanyInfo | None:
         try:
@@ -132,12 +145,52 @@ class YFinanceDataFetcher(BaseDataFetcher):
             return []
 
     def get_current_price(self, ticker: str) -> float | None:
+        now = time.time()
+        with self._price_lock:
+            cached = self._price_cache.get(ticker)
+            if cached and now - cached[1] < self._PRICE_TTL:
+                return cached[0]
+
+        price = self._fetch_current_price(ticker)
+        if price is not None:
+            with self._price_lock:
+                self._price_cache[ticker] = (price, now)
+        return price
+
+    def _fetch_current_price(self, ticker: str) -> float | None:
+        """Fetch the latest price using the lightweight fast_info endpoint.
+
+        `fast_info` avoids the heavy `.info` payload; fall back to the last
+        close from a 1-day history if it's unavailable.
+        """
         try:
-            stock = yf.Ticker(ticker)
-            info = stock.info
-            return info.get("currentPrice", info.get("regularMarketPrice"))
+            price = getattr(yf.Ticker(ticker).fast_info, "last_price", None)
+            if price:
+                return float(price)
         except Exception:
-            return None
+            pass
+        try:
+            hist = yf.Ticker(ticker).history(period="1d")
+            if not hist.empty:
+                return float(hist["Close"].iloc[-1])
+        except Exception:
+            pass
+        return None
+
+    def get_current_prices(self, tickers: list[str]) -> dict[str, float | None]:
+        """Fetch many current prices in parallel (cache-aware per ticker)."""
+        if not tickers:
+            return {}
+        results: dict[str, float | None] = {}
+        with ThreadPoolExecutor(max_workers=min(8, len(tickers))) as ex:
+            futures = {ex.submit(self.get_current_price, t): t for t in tickers}
+            for fut in futures:
+                ticker = futures[fut]
+                try:
+                    results[ticker] = fut.result()
+                except Exception:
+                    results[ticker] = None
+        return results
 
     def get_news(self, ticker: str, count: int = 5) -> list[NewsItem]:
         try:

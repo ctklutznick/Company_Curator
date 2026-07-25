@@ -75,9 +75,12 @@ def index():
     total_entry_value = 0.0
     total_current_value = 0.0
 
+    # Fetch all live prices in parallel up front (falls back per-ticker below).
+    live_prices = fetcher.get_current_prices([e.ticker for e in entries])
+
     for entry in entries:
         # Use live price for accurate delta, fall back to last recorded close
-        live_price = fetcher.get_current_price(entry.ticker)
+        live_price = live_prices.get(entry.ticker)
         if live_price is None:
             latest = tracker.get_latest(entry.ticker)
             live_price = latest.close_price if latest else entry.entry_price
