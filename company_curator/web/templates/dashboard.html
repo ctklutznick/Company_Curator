@@ -235,7 +235,6 @@ function askAI() {
 }
 </script>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 (function () {
     const canvas = document.getElementById('pf-chart');
@@ -288,18 +287,31 @@ function askAI() {
         });
     }
 
-    showMsg('Loading…');
-    fetch('/portfolio-history')
-        .then(r => r.json())
-        .then(d => {
-            if (!d.points || d.points.length === 0) {
-                showMsg('Not enough price data yet — check back after a day of tracking.');
-                return;
-            }
-            if (since && d.start) since.textContent = 'since ' + d.start;
-            render(d.points);
-        })
-        .catch(() => showMsg('Could not load chart.'));
+    function start() {
+        showMsg('Loading…');
+        fetch('/portfolio-history')
+            .then(r => r.json())
+            .then(d => {
+                if (!d.points || d.points.length === 0) {
+                    showMsg('Not enough price data yet — check back after a day of tracking.');
+                    return;
+                }
+                if (since && d.start) since.textContent = 'since ' + d.start;
+                render(d.points);
+            })
+            .catch(() => showMsg('Could not load chart.'));
+    }
+
+    // Chart.js may not be present yet on SPA navigations — load it on demand.
+    if (window.Chart) {
+        start();
+    } else {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/chart.js@4';
+        s.onload = start;
+        s.onerror = () => showMsg('Could not load chart.');
+        document.head.appendChild(s);
+    }
 })();
 </script>
 

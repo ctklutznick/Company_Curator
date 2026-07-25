@@ -27,6 +27,7 @@
             --hl-blue: rgba(58, 90, 140, 0.22);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; }
+        html { overflow-x: hidden; }
         body {
             font-family: 'Fraunces', Georgia, serif;
             background: var(--paper);
@@ -34,6 +35,7 @@
             line-height: 1.35;
             display: flex;
             min-height: 100vh;
+            overflow-x: hidden;
         }
         .mono { font-family: 'JetBrains Mono', monospace; }
         .hand { font-family: 'Fraunces', Georgia, serif; font-weight: 600; }
@@ -509,8 +511,8 @@
             .grid-6col { grid-template-columns: 1fr 1fr !important; }
             .grid-7col { grid-template-columns: 1fr 1fr !important; }
 
-            /* Tables scroll horizontally */
-            .card { overflow-x: auto; }
+            /* Tables scroll horizontally inside their card (beats inline overflow:hidden) */
+            .card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
             table { min-width: 600px; }
 
             /* Date tabs scroll */
