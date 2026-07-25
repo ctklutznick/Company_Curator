@@ -135,6 +135,7 @@
         /* Main content */
         .main {
             flex: 1;
+            min-width: 0; /* allow shrink below content width so inner cards scroll instead of widening the page */
             margin-left: 220px;
             display: flex;
             flex-direction: column;
@@ -162,6 +163,7 @@
         }
         .content {
             flex: 1;
+            min-width: 0;
             padding: 24px;
         }
 
