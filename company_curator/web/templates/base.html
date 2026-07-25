@@ -513,9 +513,10 @@
             .grid-6col { grid-template-columns: 1fr 1fr !important; }
             .grid-7col { grid-template-columns: 1fr 1fr !important; }
 
-            /* Tables scroll horizontally inside their card (beats inline overflow:hidden) */
-            .card { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-            table { min-width: 600px; }
+            /* Tables fit the screen instead of forcing sideways scroll */
+            .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+            table { min-width: 0; font-size: 12px; }
+            thead th, tbody td { padding: 8px 6px; }
 
             /* Date tabs scroll */
             .date-tabs { padding: 0 8px; }

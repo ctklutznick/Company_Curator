@@ -8,7 +8,7 @@
 {% block content %}
 {% if watchlist %}
 <div class="card" style="overflow:hidden;">
-    <table>
+    <table class="wl-table">
         <thead>
             <tr>
                 <th>Ticker</th>
@@ -55,6 +55,17 @@
     </table>
 </div>
 <div class="wf-note" style="margin-top:8px;">&larr; click a ticker to see detail &middot; price history &middot; movement notes</div>
+<style>
+/* On phones, drop the wide low-priority columns so the table fits without sideways scroll */
+@media (max-width: 768px) {
+    .wl-table th:nth-child(2), .wl-table td:nth-child(2),  /* Name */
+    .wl-table th:nth-child(3), .wl-table td:nth-child(3),  /* Entry */
+    .wl-table th:nth-child(6), .wl-table td:nth-child(6),  /* Added */
+    .wl-table th:nth-child(7), .wl-table td:nth-child(7) { /* Latest Note */
+        display: none;
+    }
+}
+</style>
 {% else %}
 <div class="card card-pad">
     <div class="empty-state">
