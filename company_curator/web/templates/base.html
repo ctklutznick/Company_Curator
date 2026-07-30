@@ -504,14 +504,23 @@
             /* Prevent iOS auto-zoom on input focus (needs >=16px) */
             input[type="text"], textarea, #search-input { font-size: 16px !important; }
 
-            /* Stack grids */
-            .grid-2col { grid-template-columns: 1fr !important; }
-            .grid-3col { grid-template-columns: 1fr !important; }
-            .stat-grid { grid-template-columns: 1fr 1fr !important; }
-            .grid-4col { grid-template-columns: 1fr 1fr !important; }
-            .grid-5col { grid-template-columns: 1fr 1fr !important; }
-            .grid-6col { grid-template-columns: 1fr 1fr !important; }
-            .grid-7col { grid-template-columns: 1fr 1fr !important; }
+            /* Stack grids. Use minmax(0, ...) so tracks can shrink below their
+               content width — plain 1fr is minmax(auto, 1fr), which lets long
+               non-wrapping content push cards off the right edge of the screen. */
+            .grid-2col { grid-template-columns: minmax(0, 1fr) !important; }
+            .grid-3col { grid-template-columns: minmax(0, 1fr) !important; }
+            .stat-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+            .grid-4col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+            .grid-5col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+            .grid-6col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+            .grid-7col { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+
+            /* Grid items default to min-width:auto, which also refuses to
+               shrink — force them to allow overflow handling inside instead. */
+            .grid-2col > *, .grid-3col > *, .stat-grid > *,
+            .grid-4col > *, .grid-5col > *, .grid-6col > *, .grid-7col > * {
+                min-width: 0;
+            }
 
             /* Tables fit the screen instead of forcing sideways scroll */
             .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
