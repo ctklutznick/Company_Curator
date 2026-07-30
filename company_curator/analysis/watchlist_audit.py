@@ -63,7 +63,7 @@ class WatchlistAuditor:
 
         response = self._client.messages.create(
             model=self._model,
-            max_tokens=4000,
+            max_tokens=16000,
             messages=[{"role": "user", "content": prompt}],
         )
 
