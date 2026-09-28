@@ -1,7 +1,7 @@
 # Discovery Redesign — Real Candidate Sourcing
 
-Status: **in progress** (approved 2026-09-28). Replaces the hardcoded ticker
-universe with a pluggable, real candidate-sourcing layer.
+Status: **done** (approved & implemented 2026-09-28). Replaced the hardcoded
+ticker universe with a pluggable, real candidate-sourcing layer.
 
 ## 1. Problem
 
@@ -103,15 +103,21 @@ No live network in tests — sources mocked, matching the `conftest` mock-fetche
 
 ## 8. Ordered to-do checklist
 
-1. [ ] Bump `yfinance>=1.2.0`; suite green (isolated commit).
-2. [ ] `is_valid_ticker` helper + tests.
-3. [ ] `CandidateSource` ABC + `StaticUniverseSource` (move the list) + tests.
-4. [ ] `YFinanceScreenSource` (preference→query mapping) + mocked tests.
-5. [ ] `CompositeCandidateSource` + tests.
-6. [ ] Refactor `GrowthScreener` to take a `CandidateSource`; delete
-   `get_top_gainers`/`_get_screening_universe`; update `scheduler.py`/`main.py` + tests.
-7. [ ] Daily candidate cache + tests.
-8. [ ] Update `CLAUDE.md` discovery flow; commit/push.
+1. [x] Bump `yfinance>=1.2.0`; suite green (isolated commit).
+2. [x] `is_valid_ticker`/`clean_tickers` helper + tests.
+3. [x] `CandidateSource` ABC + `StaticUniverseSource` (moved the list) + tests.
+4. [x] `YFinanceScreenSource` (risk-profile→screen mapping) + mocked tests.
+5. [x] `CompositeCandidateSource` + tests.
+6. [x] Refactored `GrowthScreener` to take a `CandidateSource`; deleted
+   `get_top_gainers`/`_get_screening_universe`; updated `scheduler.py` wiring + tests.
+7. [x] Shared `TTLCache` for screen results + tests.
+8. [x] Updated `CLAUDE.md` discovery flow; committed/pushed.
+
+## Follow-ups (not in v1)
+
+- Sector-aware `EquityQuery` (use `prefs.sectors` to filter the screen).
+- Consider a real data provider (FMP/Finnhub) if yfinance proves too flaky.
+- DB-backed candidate cache if the in-process cache proves insufficient across restarts.
 
 ## Decisions
 
