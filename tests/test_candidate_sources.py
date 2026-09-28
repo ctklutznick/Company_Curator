@@ -4,6 +4,7 @@ import pytest
 
 from company_curator.discovery.preferences import ResolvedPreferences
 from company_curator.discovery.sources.base import CandidateSource
+from company_curator.discovery.sources.composite import CompositeCandidateSource
 from company_curator.discovery.sources.static import StaticUniverseSource
 from company_curator.discovery.sources.yfinance_screen import YFinanceScreenSource
 
@@ -112,3 +113,58 @@ def test_yf_source_returns_empty_on_error():
 def test_yf_source_handles_malformed_result():
     assert YFinanceScreenSource(screen_fn=_FakeScreen(result={"oops": 1})).get_candidates(_prefs(), 10) == []
     assert YFinanceScreenSource(screen_fn=_FakeScreen(result=None)).get_candidates(_prefs(), 10) == []
+
+
+# --- CompositeCandidateSource -------------------------------------------------
+
+
+class _FixedSource(CandidateSource):
+    def __init__(self, tickers, raises=False):
+        self._tickers = tickers
+        self._raises = raises
+
+    def get_candidates(self, prefs, limit):
+        if self._raises:
+            raise RuntimeError("source down")
+        return list(self._tickers[:limit])
+
+
+def test_composite_is_a_candidate_source():
+    assert isinstance(CompositeCandidateSource([]), CandidateSource)
+
+
+def test_composite_merges_and_dedups_preserving_order():
+    composite = CompositeCandidateSource([
+        _FixedSource(["AAPL", "MSFT"]),
+        _FixedSource(["MSFT", "NVDA"]),
+    ])
+    assert composite.get_candidates(_prefs(), 10) == ["AAPL", "MSFT", "NVDA"]
+
+
+def test_composite_falls_through_to_next_source_when_first_is_empty():
+    composite = CompositeCandidateSource([
+        _FixedSource([]),
+        _FixedSource(["AAPL", "MSFT"]),
+    ])
+    assert composite.get_candidates(_prefs(), 10) == ["AAPL", "MSFT"]
+
+
+def test_composite_skips_a_failing_source():
+    composite = CompositeCandidateSource([
+        _FixedSource([], raises=True),
+        _FixedSource(["AAPL"]),
+    ])
+    assert composite.get_candidates(_prefs(), 10) == ["AAPL"]
+
+
+def test_composite_respects_limit_and_stops_early():
+    composite = CompositeCandidateSource([
+        _FixedSource(["AAPL", "MSFT", "NVDA"]),
+        _FixedSource(["TSLA"]),
+    ])
+    assert composite.get_candidates(_prefs(), limit=2) == ["AAPL", "MSFT"]
+
+
+def test_composite_returns_empty_when_all_sources_empty():
+    composite = CompositeCandidateSource([_FixedSource([]), _FixedSource([])])
+    assert composite.get_candidates(_prefs(), 10) == []
