@@ -24,7 +24,10 @@ from company_curator.discovery.scorer import QualitativeScorer, ScoredCompany
 from company_curator.discovery.screener import GrowthScreener
 from company_curator.discovery.sources.composite import CompositeCandidateSource
 from company_curator.discovery.sources.static import StaticUniverseSource
-from company_curator.discovery.sources.yfinance_screen import YFinanceScreenSource
+from company_curator.discovery.sources.yfinance_screen import (
+    SHARED_SCREEN_CACHE,
+    YFinanceScreenSource,
+)
 from company_curator.notifications.emailer import BaseNotifier
 from company_curator.watchlist.alerts import AlertManager
 from company_curator.watchlist.audit_manager import AuditManager
@@ -156,7 +159,7 @@ class DailyPipeline:
         # Prefer the live Yahoo screen; fall back to the curated static universe
         # if it's down or rate-limited so a run never produces zero candidates.
         source = CompositeCandidateSource([
-            YFinanceScreenSource(),
+            YFinanceScreenSource(cache=SHARED_SCREEN_CACHE),
             StaticUniverseSource(),
         ])
         screener = GrowthScreener(self._fetcher, source, prefs)

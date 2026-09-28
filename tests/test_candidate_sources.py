@@ -6,7 +6,7 @@ from company_curator.discovery.preferences import ResolvedPreferences
 from company_curator.discovery.sources.base import CandidateSource
 from company_curator.discovery.sources.composite import CompositeCandidateSource
 from company_curator.discovery.sources.static import StaticUniverseSource
-from company_curator.discovery.sources.yfinance_screen import YFinanceScreenSource
+from company_curator.discovery.sources.yfinance_screen import TTLCache, YFinanceScreenSource
 
 
 def _prefs(risk="moderate"):
@@ -168,3 +168,58 @@ def test_composite_respects_limit_and_stops_early():
 def test_composite_returns_empty_when_all_sources_empty():
     composite = CompositeCandidateSource([_FixedSource([]), _FixedSource([])])
     assert composite.get_candidates(_prefs(), 10) == []
+
+
+# --- YFinanceScreenSource caching (shared TTL cache, injected clock) ----------
+
+
+class _Clock:
+    def __init__(self, start=1000.0):
+        self.t = start
+
+    def __call__(self):
+        return self.t
+
+
+def test_yf_source_caches_screen_results_within_ttl():
+    fake = _FakeScreen(result={"quotes": [{"symbol": "AAPL"}, {"symbol": "MSFT"}]})
+    cache = TTLCache(ttl_seconds=3600, clock=_Clock())
+    source = YFinanceScreenSource(screen_fn=fake, cache=cache)
+
+    first = source.get_candidates(_prefs(), 10)
+    second = source.get_candidates(_prefs(), 10)
+
+    assert first == second == ["AAPL", "MSFT"]
+    assert len(fake.calls) == 1  # second served from cache
+
+
+def test_yf_source_refetches_after_ttl_expires():
+    clock = _Clock()
+    fake = _FakeScreen(result={"quotes": [{"symbol": "AAPL"}]})
+    source = YFinanceScreenSource(screen_fn=fake, cache=TTLCache(ttl_seconds=3600, clock=clock))
+
+    source.get_candidates(_prefs(), 10)
+    clock.t += 3601
+    source.get_candidates(_prefs(), 10)
+
+    assert len(fake.calls) == 2
+
+
+def test_yf_source_does_not_cache_empty_results():
+    fake = _FakeScreen(result={"quotes": []})
+    source = YFinanceScreenSource(screen_fn=fake, cache=TTLCache(ttl_seconds=3600, clock=_Clock()))
+
+    source.get_candidates(_prefs(), 10)
+    source.get_candidates(_prefs(), 10)
+
+    assert len(fake.calls) == 2  # empty results are not cached, so we retry
+
+
+def test_yf_source_caches_per_screen_name():
+    fake = _FakeScreen(result={"quotes": [{"symbol": "AAPL"}]})
+    source = YFinanceScreenSource(screen_fn=fake, cache=TTLCache(ttl_seconds=3600, clock=_Clock()))
+
+    source.get_candidates(_prefs("aggressive"), 10)     # small_cap_gainers
+    source.get_candidates(_prefs("conservative"), 10)   # undervalued_large_caps
+
+    assert len(fake.calls) == 2  # different screens cached separately
