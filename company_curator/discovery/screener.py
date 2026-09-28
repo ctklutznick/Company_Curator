@@ -1,8 +1,8 @@
 """Market screener for finding candidate companies.
 
-SRP: Only responsible for screening the market for candidates.
-OCP: Screening strategies can be extended via the BaseScreener abstraction.
-DIP: Depends on BaseDataFetcher abstraction, not YFinance directly.
+SRP: Given candidates from a CandidateSource, apply quantitative filters.
+OCP: Screening strategies extend BaseScreener; candidate sources are swappable.
+DIP: Depends on BaseDataFetcher and CandidateSource abstractions, not concretions.
 """
 
 from __future__ import annotations
@@ -11,6 +11,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from company_curator.data.fetcher import BaseDataFetcher, CompanyInfo, FinancialMetrics
+from company_curator.discovery.preferences import ResolvedPreferences
+from company_curator.discovery.sources.base import CandidateSource
 
 
 @dataclass
@@ -28,21 +30,21 @@ class BaseScreener(ABC):
 
 
 class GrowthScreener(BaseScreener):
-    """Screens for high-growth companies with strong fundamentals."""
+    """Screens candidate companies for growth + fundamentals thresholds."""
 
     def __init__(
         self,
         fetcher: BaseDataFetcher,
-        min_market_cap: float = 500_000_000,
-        min_revenue_growth: float = 0.05,
+        source: CandidateSource,
+        prefs: ResolvedPreferences,
     ) -> None:
         self._fetcher = fetcher
-        self._min_market_cap = min_market_cap
-        self._min_revenue_growth = min_revenue_growth
+        self._source = source
+        self._prefs = prefs
 
     def screen(self, count: int = 20) -> list[ScreenerResult]:
-        """Screen the market for high-growth candidates."""
-        candidates = self._fetcher.get_top_gainers(count=count * 2)
+        """Pull candidates from the source and keep those passing the filters."""
+        candidates = self._source.get_candidates(self._prefs, limit=count * 2)
         results: list[ScreenerResult] = []
 
         for ticker in candidates:
@@ -63,12 +65,12 @@ class GrowthScreener(BaseScreener):
         return results
 
     def _passes_filters(self, info: CompanyInfo, metrics: FinancialMetrics) -> bool:
-        """Apply basic quantitative filters before qualitative scoring."""
-        if info.market_cap < self._min_market_cap:
+        """Apply quantitative filters before qualitative scoring."""
+        if info.market_cap < self._prefs.min_market_cap:
             return False
         if (
             metrics.revenue_growth_yoy is not None
-            and metrics.revenue_growth_yoy < self._min_revenue_growth
+            and metrics.revenue_growth_yoy < self._prefs.min_revenue_growth
         ):
             return False
         return True
