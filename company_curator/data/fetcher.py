@@ -219,8 +219,7 @@ class YFinanceDataFetcher(BaseDataFetcher):
     def get_top_gainers(self, count: int = 50) -> list[str]:
         """Get tickers with strong recent momentum for screening."""
         try:
-            # Screen using S&P 500 + growth stocks as the universe
-            sp500 = yf.Tickers(self._get_screening_universe())
+            # Screen the curated growth-stock universe
             results: list[tuple[str, float]] = []
 
             for ticker_str in self._get_screening_universe().split():
