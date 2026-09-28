@@ -34,6 +34,11 @@ class User(Base):
     display_name = Column(String(100), nullable=False)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
+    # Terms of Service acceptance. Nullable so pre-existing users are
+    # grandfathered; set at signup (see auth.signup).
+    terms_accepted_at = Column(String(30))
+    terms_version = Column(String(20))
+
     # Per-user SMTP settings (nullable — falls back to global config)
     smtp_host = Column(String(255))
     smtp_port = Column(Integer)

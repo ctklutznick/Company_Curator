@@ -7,12 +7,14 @@ from __future__ import annotations
 
 import hmac
 import re
+from datetime import datetime
 
 from flask import Blueprint, current_app, flash, redirect, render_template, request, url_for
 from flask_bcrypt import Bcrypt
 from flask_login import current_user, login_required, login_user, logout_user
 
 from company_curator.data.models import User
+from company_curator.web.routes.legal import TERMS_VERSION
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -96,6 +98,8 @@ def signup():
             errors.append("Password must be at least 8 characters.")
         if password != confirm:
             errors.append("Passwords do not match.")
+        if not request.form.get("accept_terms"):
+            errors.append("You must accept the Terms of Service to sign up.")
 
         if errors:
             for e in errors:
@@ -109,7 +113,13 @@ def signup():
             return render_template("signup.html", invite_required=bool(invite_required))
 
         pw_hash = _get_bcrypt().generate_password_hash(password).decode("utf-8")
-        user = User(email=email, password_hash=pw_hash, display_name=display_name)
+        user = User(
+            email=email,
+            password_hash=pw_hash,
+            display_name=display_name,
+            terms_accepted_at=datetime.utcnow().isoformat(),
+            terms_version=TERMS_VERSION,
+        )
         db.session.add(user)
         db.session.commit()
 

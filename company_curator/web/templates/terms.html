@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+    <title>Terms of Service — Company Curator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,100..900;1,9..144,100..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ink: #1a1714; --ink-2: #3a342e; --ink-3: #6b625a; --ink-4: #9a9089;
+            --paper: #fbf8f3; --paper-2: #f2ede3; --line: #1a1714;
+            --accent-red: #c5463a; --accent-yellow: #f2d35a;
+            --hl: rgba(242, 211, 90, 0.45); --hl-red: rgba(197, 70, 58, 0.22);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Fraunces', Georgia, serif;
+            background: var(--paper-2);
+            color: var(--ink);
+            min-height: 100vh;
+            padding: 32px 16px;
+            display: flex;
+            justify-content: center;
+        }
+        .doc {
+            background: var(--paper);
+            border: 1.5px solid var(--line);
+            border-radius: 6px 4px 7px 3px;
+            padding: 40px 36px;
+            width: 720px;
+            max-width: 100%;
+            line-height: 1.5;
+        }
+        .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+        .logo-icon {
+            width: 30px; height: 30px;
+            border: 1.8px solid var(--ink); border-radius: 50%;
+            display: grid; place-items: center;
+            background: var(--accent-yellow); font-size: 16px;
+        }
+        .logo-text { font-size: 22px; font-weight: 700; }
+        h1 { font-size: 28px; margin-bottom: 4px; }
+        .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--ink-3); letter-spacing: 0.5px; margin-bottom: 24px; }
+        h2 { font-size: 18px; margin: 24px 0 8px; }
+        p { margin-bottom: 12px; color: var(--ink-2); }
+        ul { margin: 0 0 12px 20px; color: var(--ink-2); }
+        li { margin-bottom: 6px; }
+        .callout {
+            border: 1.5px solid var(--accent-red);
+            border-left: 5px solid var(--accent-red);
+            background: var(--hl-red);
+            border-radius: 4px 7px 3px 6px;
+            padding: 16px 18px;
+            margin: 20px 0;
+        }
+        .callout h2 { margin-top: 0; color: var(--accent-red); }
+        .callout p:last-child { margin-bottom: 0; }
+        .back { display: inline-block; margin-top: 24px; font-size: 14px; color: var(--ink); font-weight: 600; text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="doc">
+        <div class="logo">
+            <div class="logo-icon">&#10022;</div>
+            <div class="logo-text">Curator</div>
+        </div>
+        <h1>Terms of Service</h1>
+        <div class="meta">VERSION {{ terms_version }}</div>
+
+        <div class="callout">
+            <h2>AI-generated research — please read</h2>
+            <p>Company Curator uses <strong>artificial intelligence (AI)</strong> — including
+            large language models — to screen companies, score them, and write the deep-dive,
+            peer-comparison, and risk reports you receive. This content is generated automatically
+            and <strong>may be incomplete, out of date, or wrong</strong>.</p>
+            <p>This is not investment advice. The picks, scores, and analysis are informational
+            and educational only. They are not a recommendation, solicitation, or offer to buy or
+            sell any security. Always do your own research and consult a licensed financial
+            professional before making any investment decision.</p>
+        </div>
+
+        <h2>1. What Company Curator does</h2>
+        <p>Company Curator is a personal investment-research tool. It scans public market data,
+        uses AI to identify and analyze potential high-growth companies, lets you keep a watchlist,
+        and emails you daily and monthly reports.</p>
+
+        <h2>2. No financial advice; no fiduciary relationship</h2>
+        <p>We are not a registered investment adviser, broker-dealer, or financial planner, and
+        using this service does not create any advisory or fiduciary relationship. You are solely
+        responsible for your own investment decisions and their outcomes.</p>
+
+        <h2>3. Accuracy and data sources</h2>
+        <p>Market data comes from third-party sources (such as public market-data APIs) and may be
+        delayed, inaccurate, or unavailable. AI-generated commentary can contain errors or
+        "hallucinated" facts. We do not guarantee the accuracy, completeness, or timeliness of any
+        information provided.</p>
+
+        <h2>4. Your account and data</h2>
+        <ul>
+            <li>You are responsible for keeping your login credentials secure.</li>
+            <li>We store the preferences, watchlist, and (optionally) email-delivery settings you provide so we can generate and send your reports.</li>
+            <li>We send email to the address associated with your account.</li>
+        </ul>
+
+        <h2>5. Acceptable use</h2>
+        <p>Don't use the service unlawfully, don't attempt to disrupt or gain unauthorized access
+        to it, and don't resell or redistribute the AI-generated reports as professional advice.</p>
+
+        <h2>6. No warranty; limitation of liability</h2>
+        <p>The service is provided "as is," without warranties of any kind. To the maximum extent
+        permitted by law, we are not liable for any investment losses or other damages arising from
+        your use of the service or reliance on its output.</p>
+
+        <h2>7. Changes to these terms</h2>
+        <p>We may update these terms as the product evolves. Material changes will be reflected in
+        a new version identifier, and continued use after an update constitutes acceptance.</p>
+
+        <p style="margin-top:20px;font-style:italic;color:var(--ink-3);">This document is a
+        plain-language summary provided for transparency and is not legal advice.</p>
+
+        <a class="back" href="{{ url_for('auth.signup') }}">&larr; Back to sign up</a>
+    </div>
+</body>
+</html>

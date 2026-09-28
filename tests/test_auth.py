@@ -20,6 +20,7 @@ def test_signup_and_login(client):
         "display_name": "New User",
         "password": "securepassword123",
         "confirm_password": "securepassword123",
+        "accept_terms": "on",
     }, follow_redirects=True)
     assert response.status_code == 200
 
