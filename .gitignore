@@ -13,6 +13,11 @@ venv/
 
 # Database
 *.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
 
 # IDE
 .vscode/
@@ -29,6 +34,13 @@ pgdata/
 
 # Alembic
 migrations/versions/__pycache__/
+
+# Backups / temp
+*.bak
+*.macl.bak
+*.tmp
+*.orig
+=*
 
 # OS
 .DS_Store
