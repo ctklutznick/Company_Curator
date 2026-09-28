@@ -162,7 +162,10 @@ class DailyPipeline:
             YFinanceScreenSource(cache=SHARED_SCREEN_CACHE),
             StaticUniverseSource(),
         ])
-        screener = GrowthScreener(self._fetcher, source, prefs)
+        screener = GrowthScreener(
+            self._fetcher, source, prefs,
+            candidate_pool=self._config.discovery.candidate_pool,
+        )
         scorer = QualitativeScorer(self._client)
 
         # Exclude tickers picked recently so each day is fresh

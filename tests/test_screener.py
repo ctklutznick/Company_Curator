@@ -60,6 +60,24 @@ class _ListSource(CandidateSource):
         return self._tickers[:limit]
 
 
+class _SpySource(CandidateSource):
+    """Records the limit it was asked for."""
+
+    def __init__(self):
+        self.asked_limit = None
+
+    def get_candidates(self, prefs, limit):
+        self.asked_limit = limit
+        return []
+
+
+def test_screener_draws_the_configured_candidate_pool_from_source():
+    spy = _SpySource()
+    screener = GrowthScreener(_FakeFetcher({}, {}), spy, _prefs(), candidate_pool=200)
+    screener.screen(count=30)
+    assert spy.asked_limit == 200
+
+
 def test_screener_keeps_companies_meeting_thresholds():
     infos = {"AAPL": _info("AAPL", 2_000_000_000)}
     metrics = {"AAPL": _metrics("AAPL", 0.20)}

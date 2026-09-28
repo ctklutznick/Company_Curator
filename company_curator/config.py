@@ -48,6 +48,10 @@ class DiscoveryConfig:
     min_market_cap: float = 500_000_000  # $500M minimum
     min_volume: int = 100_000  # Minimum avg daily volume
     dedup_days: int = 30  # Don't re-recommend a ticker within this window
+    # How many candidates to pull from the source each run before filtering.
+    # Bigger pool = more variety and more chances for new names. Yahoo's screen
+    # caps a single response at 250.
+    candidate_pool: int = 200
 
 
 @dataclass(frozen=True)

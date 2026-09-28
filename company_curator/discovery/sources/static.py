@@ -11,19 +11,32 @@ from company_curator.discovery.preferences import ResolvedPreferences
 from company_curator.discovery.sources.base import CandidateSource
 from company_curator.utils.tickers import clean_tickers
 
-# Curated growth-stock universe. Kept as a fallback; dynamic sources
-# (YFinanceScreenSource) are preferred for real discovery.
+# Curated growth-stock universe (~200 names). Kept as a fallback; the dynamic
+# YFinanceScreenSource is preferred for real discovery. Duplicates are harmless
+# (clean_tickers de-dups). Grouped loosely by theme for maintainability.
 DEFAULT_UNIVERSE = (
-    "AAPL MSFT GOOGL AMZN NVDA META TSLA AMD AVGO ORCL "
-    "CRM ADBE NOW SNOW PLTR NET DDOG CRWD ZS MDB "
-    "PANW FTNT BILL HUBS SHOP MELI SE SQ COIN RBLX "
-    "ABNB UBER LYFT DASH DUOL CELH ONON DECK LULU ELF "
-    "AXON TOST TTD ROKU PINS SNAP SMCI ARM IONQ RGTI "
-    "AFRM SOFI HOOD UPST OPEN CAVA MNDY CFLT S "
-    "GTLB APP IOT BRZE DOCN DT PATH ESTC PCOR "
-    "GLBE PAYC DKNG FOUR BROS VERX ALKT ZI CLBT GENI "
-    "ANET WDAY TEAM VEEV TWLO OKTA U RIVN LCID JOBY "
-    "LUNR ASTS AEHR ENPH SEDG FSLR RUN ARRY CHPT BLNK"
+    # Mega-cap tech / platforms
+    "AAPL MSFT GOOGL GOOG AMZN NVDA META NFLX TSLA ORCL CRM ADBE INTU "
+    # Semiconductors & equipment
+    "AVGO AMD QCOM TXN MU INTC AMAT LRCX KLAC ADI MRVL MCHP NXPI ON ASML TSM "
+    "MPWR TER ENTG SMCI ARM CRDO ALAB "
+    # Software / SaaS
+    "NOW SNOW PLTR NET DDOG CRWD ZS MDB PANW FTNT BILL HUBS DOCN DT PATH ESTC "
+    "PCOR MNDY CFLT GTLB APP IOT BRZE TEAM WDAY VEEV TWLO OKTA ADSK CDNS SNPS "
+    "ANSS FICO MSCI ROP FTV DOCU ZM FROG AI BASE AMPL ASAN PD FSLY S ZI CLBT "
+    # Fintech / payments
+    "SQ AFRM SOFI HOOD UPST COIN PYPL V MA FIS GPN FI NU MQ DLO PAGS STNE FOUR "
+    "TOST GLBE PAYC VERX ALKT "
+    # Consumer / internet / retail
+    "SHOP MELI SE ABNB UBER LYFT DASH DUOL RBLX ETSY W CHWY BKNG EXPE MAR PINS "
+    "SNAP ROKU TTD SPOT RDDT TTWO EA BABA PDD JD BIDU "
+    # Consumer brands / restaurants
+    "CELH ONON DECK LULU ELF CROX BOOT CMG WING TXRH DPZ BROS CAVA DKNG GENI "
+    # Healthcare / biotech
+    "LLY NVO ISRG DXCM PODD VRTX REGN MRNA BNTX CRSP NTLA BEAM RXRX HIMS DOCS TEM "
+    # Industrials / power / space / clean energy / EV
+    "AXON GEV VRT PWR ETN NEE ENPH SEDG FSLR RUN ARRY CHPT BLNK RIVN LCID JOBY "
+    "LUNR ASTS RKLB ACHR KTOS AEHR IONQ RGTI"
 )
 
 

@@ -32,6 +32,12 @@ def test_static_source_returns_valid_tickers_and_respects_limit():
     assert len(set(result)) == 5  # no dupes
 
 
+def test_static_source_has_a_large_universe():
+    # The fallback list should be broad enough that new names surface over time.
+    source = StaticUniverseSource()
+    assert len(source.get_candidates(_prefs(), limit=1000)) > 100
+
+
 def test_static_source_is_deterministic():
     source = StaticUniverseSource()
     assert source.get_candidates(_prefs(), limit=10) == source.get_candidates(_prefs(), limit=10)

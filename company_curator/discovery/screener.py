@@ -37,14 +37,21 @@ class GrowthScreener(BaseScreener):
         fetcher: BaseDataFetcher,
         source: CandidateSource,
         prefs: ResolvedPreferences,
+        candidate_pool: int = 100,
     ) -> None:
         self._fetcher = fetcher
         self._source = source
         self._prefs = prefs
+        self._candidate_pool = candidate_pool
 
     def screen(self, count: int = 20) -> list[ScreenerResult]:
-        """Pull candidates from the source and keep those passing the filters."""
-        candidates = self._source.get_candidates(self._prefs, limit=count * 2)
+        """Pull a pool of candidates from the source and keep those passing filters.
+
+        `candidate_pool` (not `count`) controls how many candidates are drawn, so
+        the pool can be much larger than the number of results returned — giving
+        the scorer variety and letting new names surface.
+        """
+        candidates = self._source.get_candidates(self._prefs, limit=self._candidate_pool)
         results: list[ScreenerResult] = []
 
         for ticker in candidates:
