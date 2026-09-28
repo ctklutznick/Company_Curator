@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
@@ -43,8 +43,39 @@ class Database:
         return self._scoped_session()
 
     def connect(self) -> None:
-        """Initialize — create tables if they don't exist."""
+        """Initialize — create missing tables, then add any missing columns.
+
+        create_all() never alters existing tables, so a DB created before a
+        model gained a column would be missing it. This lightweight, idempotent
+        additive migration keeps existing databases (local + the Fly volume) in
+        sync with the models without a full Alembic workflow.
+        """
         self.create_tables()
+        self._add_missing_columns()
+
+    def _add_missing_columns(self) -> None:
+        """Add columns present on the ORM models but missing from live tables.
+
+        Additive only: new columns are added as nullable (existing rows get
+        NULL). Best-effort — a failure on one column is logged, not fatal.
+        """
+        inspector = inspect(self._engine)
+        with self._engine.begin() as conn:
+            for table_name, table in Base.metadata.tables.items():
+                if not inspector.has_table(table_name):
+                    continue
+                existing = {c["name"] for c in inspector.get_columns(table_name)}
+                for column in table.columns:
+                    if column.name in existing:
+                        continue
+                    col_type = column.type.compile(dialect=self._engine.dialect)
+                    try:
+                        conn.execute(
+                            text(f'ALTER TABLE {table_name} ADD COLUMN {column.name} {col_type}')
+                        )
+                        print(f"[DB] Added missing column {table_name}.{column.name}")
+                    except Exception as e:  # noqa: BLE001 — never block startup
+                        print(f"[DB] Could not add {table_name}.{column.name}: {e}")
 
     def close(self) -> None:
         """Remove the current scoped session."""
